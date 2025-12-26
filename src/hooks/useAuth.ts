@@ -77,13 +77,19 @@ export const useAuth = create<AuthStore>((set, get) => ({
           // Sync username from user metadata to profile if not set
           const metadata = session.user.user_metadata
           if (metadata?.username) {
-            await (supabase
-              .from('profiles') as ReturnType<typeof supabase.from>)
-              .update({
-                username: metadata.username,
-                display_name: metadata.display_name || metadata.username,
-              })
-              .eq('id', session.user.id)
+            // First check if profile already has data
+            const existingProfile = await fetchProfile(session.user.id)
+            
+            // Only update if username is not set, and preserve display_name if it exists
+            if (!existingProfile?.username) {
+              await (supabase
+                .from('profiles') as ReturnType<typeof supabase.from>)
+                .update({
+                  username: metadata.username,
+                  display_name: existingProfile?.display_name || metadata.display_name || metadata.username,
+                })
+                .eq('id', session.user.id)
+            }
           }
 
           const profile = await fetchProfile(session.user.id)

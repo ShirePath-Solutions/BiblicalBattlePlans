@@ -14,8 +14,11 @@ export function Profile() {
 
   const handleSave = async () => {
     setIsSaving(true)
+    // Update both display_name and username to keep them in sync
+    // Username is kept for backwards compatibility but hidden from users
     await updateProfile({
       display_name: displayName,
+      username: displayName.toLowerCase().replace(/[^a-z0-9_]/g, '_'),
       streak_minimum: streakMinimum
     })
     setIsSaving(false)
@@ -63,10 +66,11 @@ export function Profile() {
           </CardHeader>
           <CardContent className="space-y-4">
             <Input
-              label="Display Name"
+              label="Soldier Name"
               value={displayName}
               onChange={(e) => setDisplayName(e.target.value)}
-              placeholder="Your display name"
+              placeholder="Your soldier name"
+              hint="This is how you'll be identified in the ranks"
             />
             <Input
               label="Streak Minimum (Chapters/Day)"
