@@ -15,6 +15,8 @@ function getPlanTypeBadge(type: string) {
       return { label: 'CYCLING', variant: 'warning' as const }
     case 'sequential':
       return { label: 'SEQUENTIAL', variant: 'default' as const }
+    case 'weekly_sectional':
+      return { label: 'SEQUENTIAL', variant: 'default' as const }
     case 'sectional':
       return { label: 'SECTIONAL', variant: 'success' as const }
     default:

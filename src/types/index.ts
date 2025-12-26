@@ -26,6 +26,7 @@ export type DailyStructure =
   | CyclingListsStructure
   | SequentialStructure
   | SectionalStructure
+  | WeeklySectionalStructure
 
 export interface CyclingListsStructure {
   type: 'cycling_lists'
@@ -41,6 +42,31 @@ export interface SectionalStructure {
   type: 'sectional'
   sections_per_day: number
   readings: DayReading[]
+}
+
+export interface WeeklySectionalStructure {
+  type: 'weekly_sectional'
+  total_weeks: number
+  readings_per_week: number
+  categories: WeeklyCategory[]
+  weeks: WeekReading[]
+}
+
+export interface WeeklyCategory {
+  id: string
+  label: string
+  dayOfWeek: number // 1-7 (just for ordering, not actual calendar day)
+}
+
+export interface WeekReading {
+  week: number
+  readings: WeekDayReading[]
+}
+
+export interface WeekDayReading {
+  dayOfWeek: number // 1-7
+  categoryId: string
+  passage: string // e.g., "Rom 1-2"
 }
 
 export interface ReadingList {

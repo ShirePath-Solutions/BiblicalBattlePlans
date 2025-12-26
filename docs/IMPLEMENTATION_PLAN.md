@@ -150,9 +150,10 @@ This plan has 10 independent reading lists that cycle at different rates:
 - ~3-4 chapters per day (1,189 chapters / 365 days)
 - Simple single reading per day
 
-#### 3. Discipleship Journal Plan
-- 25 readings per month (6 catch-up days built in)
-- 4 sections daily: OT, NT, Psalms, Proverbs
+#### 3. 52-Week Bible Reading Plan
+- 52 weeks, 7 readings per week (364 total readings)
+- Each week covers 7 categories: Epistles, The Law, History, Psalms, Poetry, Prophecy, Gospels
+- Balanced variety across Scripture each week
 
 ---
 
@@ -490,10 +491,10 @@ Routes:
 1. **Supabase Type Casting** - Fixed `never` type errors on insert/update operations using `ReturnType<typeof supabase.from>` casting
 2. **Email Confirmation UX** - Added clear messaging about email verification requirement on signup and helpful error messages on login
 3. **Username Sync** - Fixed signup flow to store username in user metadata and sync to profile on email confirmation
-4. **Plan Structure Handling** - Fixed `getTodaysReading()` to properly handle all three plan types:
+4. **Plan Structure Handling** - Fixed `getTodaysReading()` to properly handle all plan types:
    - `cycling_lists` (Horner's) - Uses `lists` array with independent cycling
    - `sequential` (Canonical) - Uses `books` array with `chapters_per_day`
-   - `sectional` (Discipleship Journal) - Uses `sections` array
+   - `weekly_sectional` (52-Week Plan) - Uses `weeks` array with 7 readings per week
 
 ---
 

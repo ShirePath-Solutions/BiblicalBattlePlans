@@ -5,6 +5,7 @@ interface PlanProgressProps {
   totalDays: number
   completedToday: number
   totalToday: number
+  daysOnPlan?: number // Actual calendar days since start
   unit?: string // e.g., "chapters", "sections", "lists"
   className?: string
 }
@@ -14,11 +15,13 @@ export function PlanProgress({
   totalDays,
   completedToday,
   totalToday,
+  daysOnPlan,
   unit = 'sections',
   className = '',
 }: PlanProgressProps) {
   const overallProgress = totalDays > 0 ? Math.round(((currentDay - 1) / totalDays) * 100) : 0
   const todayProgress = totalToday > 0 ? Math.round((completedToday / totalToday) * 100) : 0
+  const readingsAhead = daysOnPlan !== undefined ? currentDay - daysOnPlan : 0
 
   return (
     <div className={`space-y-4 ${className}`}>
@@ -42,8 +45,13 @@ export function PlanProgress({
         <div>
           <div className="flex justify-between text-sm mb-2">
             <span className="text-terminal-gray-400">Campaign Progress</span>
-            <span className="text-terminal-gray-200">
-              Day {currentDay} of {totalDays}
+            <span className="text-terminal-gray-200 flex items-center gap-2">
+              <span>Reading {currentDay} of {totalDays}</span>
+              {readingsAhead !== 0 && (
+                <span className={`text-xs font-mono ${readingsAhead > 0 ? 'text-achievement-gold' : 'text-alert-red'}`}>
+                  ({readingsAhead > 0 ? `+${readingsAhead} ahead` : `${readingsAhead} behind`})
+                </span>
+              )}
             </span>
           </div>
           <ProgressBar

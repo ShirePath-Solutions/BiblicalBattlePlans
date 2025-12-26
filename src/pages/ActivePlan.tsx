@@ -54,11 +54,20 @@ export function ActivePlan() {
 
   const { plan } = userPlan
   const isCyclingPlan = plan.daily_structure.type === 'cycling_lists'
+  const isWeeklyPlan = plan.daily_structure.type === 'weekly_sectional'
 
   // Get readings based on plan type
   const todaysReading = isCyclingPlan
     ? getCurrentReadings(plan, userPlan.list_positions || {}, progress || null)
     : getTodaysReading(plan, userPlan.current_day, progress || null)
+
+  // Calculate week/day for weekly plans
+  const weeklyInfo = isWeeklyPlan ? (() => {
+    const structure = plan.daily_structure as import('../types').WeeklySectionalStructure
+    const currentWeek = Math.ceil(userPlan.current_day / structure.readings_per_week)
+    const dayInWeek = ((userPlan.current_day - 1) % structure.readings_per_week) + 1
+    return { currentWeek, dayInWeek, totalWeeks: structure.total_weeks }
+  })() : null
 
   const chaptersReadToday = getChaptersReadToday(progress || null, plan)
   const streakMinimum = profile?.streak_minimum || 3
@@ -141,8 +150,8 @@ export function ActivePlan() {
                 {plan.name}
               </h1>
               <p className="text-terminal-gray-400 mt-1">
-                {isCyclingPlan ? 'Continuous Reading Plan' : `Day ${userPlan.current_day}`}
-                {plan.duration_days > 0 && !isCyclingPlan && ` of ${plan.duration_days}`}
+                {isCyclingPlan ? 'Continuous Reading Plan' : 
+                  `Day ${daysOnPlan} on this campaign`}
               </p>
             </div>
             {streakMet && (
@@ -155,6 +164,7 @@ export function ActivePlan() {
           <PlanProgress
             currentDay={userPlan.current_day}
             totalDays={plan.duration_days}
+            daysOnPlan={daysOnPlan}
             completedToday={chaptersReadToday}
             totalToday={
               isCyclingPlan
@@ -166,7 +176,7 @@ export function ActivePlan() {
             unit={
               plan.daily_structure.type === 'sequential' || plan.daily_structure.type === 'cycling_lists'
                 ? 'chapters'
-                : 'sections'
+                : 'readings'
             }
           />
         </CardContent>
@@ -225,8 +235,10 @@ export function ActivePlan() {
                 isCompleted={section.isCompleted}
                 onToggle={() => handleToggleSection(section)}
                 onContinue={() => handleContinue(section)}
-                showContinue={true}
-                continueLabel={isCyclingPlan ? "Continue to next chapter" : "Continue to next day"}
+                // For cycling plans, show continue on each section (each list advances independently)
+                // For sectional plans, don't show continue on each section - use the button below instead
+                showContinue={isCyclingPlan}
+                continueLabel="Continue to next chapter"
                 disabled={isMutating}
               />
             ))
@@ -234,6 +246,24 @@ export function ActivePlan() {
             <div className="text-center py-8 text-terminal-gray-400">
               <p>No readings configured for this plan</p>
             </div>
+          )}
+          
+          {/* For non-cycling plans, show a single "Continue to next day" button when all sections are done */}
+          {!isCyclingPlan && todaysReading.length > 0 && todaysReading.every(s => s.isCompleted) && (
+            <button
+              onClick={() => handleContinue(todaysReading[0])}
+              disabled={isMutating}
+              className={`
+                w-full mt-4 py-3 px-4 border-2 border-terminal-green
+                bg-terminal-green/20 text-terminal-green font-pixel
+                flex items-center justify-center gap-2
+                hover:bg-terminal-green/30 transition-colors
+                ${isMutating ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
+              `}
+            >
+              <span>CONTINUE TO NEXT DAY</span>
+              <ChevronRight className="w-5 h-5" />
+            </button>
           )}
         </CardContent>
 
@@ -269,18 +299,34 @@ export function ActivePlan() {
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            {/* Days on Campaign - Primary stat for non-cycling plans */}
+            {!isCyclingPlan && (
+              <div className="text-center p-3 bg-terminal-dark border border-terminal-gray-600">
+                <div className="text-2xl font-pixel text-terminal-green">
+                  {daysOnPlan}
+                </div>
+                <div className="text-xs text-terminal-gray-400">Days on Campaign</div>
+              </div>
+            )}
+            
+            {/* Readings/Chapters Today */}
+            <div className="text-center p-3 bg-terminal-dark border border-terminal-gray-600">
+              <div className="text-2xl font-pixel text-terminal-green">
+                {chaptersReadToday}
+              </div>
+              <div className="text-xs text-terminal-gray-400">
+                {isCyclingPlan ? 'Chapters Today' : 'Readings Today'}
+              </div>
+            </div>
+
+            {/* Overall Progress */}
             <div className="text-center p-3 bg-terminal-dark border border-terminal-gray-600">
               <div className="text-2xl font-pixel text-terminal-green">
                 {overallProgress}%
               </div>
               <div className="text-xs text-terminal-gray-400">Overall Progress</div>
             </div>
-            <div className="text-center p-3 bg-terminal-dark border border-terminal-gray-600">
-              <div className="text-2xl font-pixel text-terminal-green">
-                {chaptersReadToday}
-              </div>
-              <div className="text-xs text-terminal-gray-400">Chapters Today</div>
-            </div>
+
             {isCyclingPlan ? (
               <>
                 <div className="text-center p-3 bg-terminal-dark border border-terminal-gray-600">
@@ -296,28 +342,32 @@ export function ActivePlan() {
                   <div className="text-xs text-terminal-gray-400">Remaining</div>
                 </div>
               </>
+            ) : isWeeklyPlan && weeklyInfo ? (
+              <div className="text-center p-3 bg-terminal-dark border border-terminal-gray-600">
+                <div className="flex items-center justify-center gap-1">
+                  <div className="text-2xl font-pixel text-terminal-green">
+                    W{weeklyInfo.currentWeek}
+                  </div>
+                  <div className="text-lg font-mono text-terminal-gray-400">
+                    D{weeklyInfo.dayInWeek}
+                  </div>
+                </div>
+                <div className="text-xs text-terminal-gray-400">Reading Position</div>
+              </div>
             ) : (
-              <>
-                <div className="text-center p-3 bg-terminal-dark border border-terminal-gray-600">
+              <div className="text-center p-3 bg-terminal-dark border border-terminal-gray-600">
+                <div className="flex items-center justify-center gap-1">
                   <div className="text-2xl font-pixel text-terminal-green">
                     {userPlan.current_day}
                   </div>
-                  <div className="text-xs text-terminal-gray-400">Plan's Current Day</div>
-                </div>
-                <div className="text-center p-3 bg-terminal-dark border border-terminal-gray-600">
-                  <div className="flex items-center justify-center gap-1">
-                    <div className="text-2xl font-pixel text-terminal-green">
-                      {daysOnPlan}
+                  {daysAheadBehind !== 0 && (
+                    <div className={`text-xs font-mono ${daysAheadBehind > 0 ? 'text-achievement-gold' : 'text-alert-red'}`}>
+                      {daysAheadBehind > 0 ? `+${daysAheadBehind}` : daysAheadBehind}
                     </div>
-                    {daysAheadBehind !== 0 && (
-                      <div className={`text-xs font-mono ${daysAheadBehind > 0 ? 'text-achievement-gold' : 'text-alert-red'}`}>
-                        {daysAheadBehind > 0 ? `+${daysAheadBehind}` : daysAheadBehind}
-                      </div>
-                    )}
-                  </div>
-                  <div className="text-xs text-terminal-gray-400">Days on Plan</div>
+                  )}
                 </div>
-              </>
+                <div className="text-xs text-terminal-gray-400">Reading Position</div>
+              </div>
             )}
           </div>
         </CardContent>
@@ -343,6 +393,31 @@ export function ActivePlan() {
             <div className="flex items-start gap-3">
               <ChevronRight className="w-4 h-4 text-terminal-green flex-shrink-0 mt-0.5" />
               <p>Your daily goal is {streakMinimum} chapters (configurable in your profile) to maintain your streak.</p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Reading Tips for Weekly Plans */}
+      {isWeeklyPlan && (
+        <Card>
+          <CardHeader>
+            <h2 className="text-lg font-pixel text-terminal-green">
+              HOW IT WORKS
+            </h2>
+          </CardHeader>
+          <CardContent className="space-y-3 text-sm text-terminal-gray-300">
+            <div className="flex items-start gap-3">
+              <ChevronRight className="w-4 h-4 text-terminal-green flex-shrink-0 mt-0.5" />
+              <p>Complete one reading per day from different parts of Scripture: Epistles, Law, History, Psalms, Poetry, Prophecy, and Gospels.</p>
+            </div>
+            <div className="flex items-start gap-3">
+              <ChevronRight className="w-4 h-4 text-terminal-green flex-shrink-0 mt-0.5" />
+              <p>Each week has 7 readings. Go at your own pace—the plan progresses when you mark readings complete.</p>
+            </div>
+            <div className="flex items-start gap-3">
+              <ChevronRight className="w-4 h-4 text-terminal-green flex-shrink-0 mt-0.5" />
+              <p>Complete all 52 weeks to read through the entire Bible with balanced daily variety.</p>
             </div>
           </CardContent>
         </Card>

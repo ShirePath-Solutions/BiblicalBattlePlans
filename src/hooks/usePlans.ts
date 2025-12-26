@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase'
 import { useAuth } from './useAuth'
-import type { ReadingPlan, UserPlan, DailyProgress, CyclingListsStructure, ListPositions } from '../types'
+import type { ReadingPlan, UserPlan, DailyProgress, CyclingListsStructure, ListPositions, WeeklySectionalStructure } from '../types'
 
 // Helper type for today's reading result
 export interface TodaySection {
@@ -437,7 +437,14 @@ interface SequentialPlanStructure {
 interface SectionalPlanStructure {
   type: 'sectional'
   sections_per_day: number
-  sections: { id: string; label: string; color: string }[]
+  // Legacy format with top-level sections
+  sections?: { id: string; label: string; color?: string }[]
+  // New format with day-specific readings (like M'Cheyne)
+  section_labels?: { id: string; label: string }[]
+  readings?: {
+    day: number
+    sections: { id: string; label: string; passages: string[] }[]
+  }[]
 }
 
 // Get the passage text for a specific chapter in a list
@@ -552,14 +559,70 @@ export function getTodaysReading(
 
   if (structure.type === 'sectional') {
     const sectStructure = structure as unknown as SectionalPlanStructure
-    return (sectStructure.sections || []).map((section) => ({
-      id: section.id,
-      listId: section.id,
-      label: section.label,
-      passage: `${section.label} reading for day ${dayNumber}`,
+    
+    // If the structure has a readings array with day-specific data (like M'Cheyne)
+    if (sectStructure.readings && Array.isArray(sectStructure.readings)) {
+      const dayReading = sectStructure.readings.find(
+        (r: { day: number }) => r.day === dayNumber
+      )
+      
+      if (dayReading && dayReading.sections) {
+        return dayReading.sections.map((section: { id: string; label: string; passages: string[] }) => {
+          // Make section ID unique per day to prevent cross-day completion issues
+          const sectionId = `day${dayNumber}-${section.id}`
+          return {
+            id: sectionId,
+            listId: section.id,
+            label: section.label,
+            passage: section.passages.join(', '),
+            chapterIndex: dayNumber - 1,
+            isCompleted: completedSections.includes(sectionId),
+          }
+        })
+      }
+    }
+    
+    // Fallback for older sectional structure with top-level sections
+    return (sectStructure.sections || []).map((section) => {
+      const sectionId = `day${dayNumber}-${section.id}`
+      return {
+        id: sectionId,
+        listId: section.id,
+        label: section.label,
+        passage: `${section.label} reading for day ${dayNumber}`,
+        chapterIndex: dayNumber - 1,
+        isCompleted: completedSections.includes(sectionId),
+      }
+    })
+  }
+
+  if (structure.type === 'weekly_sectional') {
+    const weeklyStructure = structure as WeeklySectionalStructure
+    // Calculate which week and day within that week
+    const weekNumber = Math.ceil(dayNumber / weeklyStructure.readings_per_week)
+    const dayInWeek = ((dayNumber - 1) % weeklyStructure.readings_per_week) + 1
+    
+    const weekData = weeklyStructure.weeks.find(w => w.week === weekNumber)
+    if (!weekData) {
+      return []
+    }
+
+    const todaysReading = weekData.readings.find(r => r.dayOfWeek === dayInWeek)
+    if (!todaysReading) {
+      return []
+    }
+
+    const category = weeklyStructure.categories.find(c => c.id === todaysReading.categoryId)
+    const sectionId = `week${weekNumber}-day${dayInWeek}`
+
+    return [{
+      id: sectionId,
+      listId: todaysReading.categoryId,
+      label: category?.label || todaysReading.categoryId,
+      passage: todaysReading.passage,
       chapterIndex: dayNumber - 1,
-      isCompleted: completedSections.includes(section.id),
-    }))
+      isCompleted: completedSections.includes(sectionId),
+    }]
   }
 
   return []
@@ -581,6 +644,14 @@ export function calculatePlanProgress(userPlan: UserPlan, plan: ReadingPlan): nu
     )
 
     return Math.min(100, Math.round((maxPosition / longestList) * 100))
+  }
+
+  // For weekly_sectional plans, calculate based on total readings
+  if (structure.type === 'weekly_sectional') {
+    const weeklyStructure = structure as WeeklySectionalStructure
+    const totalReadings = weeklyStructure.total_weeks * weeklyStructure.readings_per_week
+    if (totalReadings === 0) return 0
+    return Math.min(100, Math.round(((userPlan.current_day - 1) / totalReadings) * 100))
   }
 
   // For other plans with fixed duration
@@ -612,6 +683,12 @@ export function getChaptersReadToday(
   // For sectional plans, each section typically represents one reading
   // but we count the number of sections completed
   if (plan.daily_structure.type === 'sectional') {
+    return progress.completed_sections.length
+  }
+
+  // For weekly_sectional plans, each reading is typically 1-6 chapters
+  // We count completed readings as 1 each for simplicity
+  if (plan.daily_structure.type === 'weekly_sectional') {
     return progress.completed_sections.length
   }
 
