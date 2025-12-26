@@ -3,7 +3,7 @@
 ## Project Overview
 A web application that gamifies Bible reading through accountability, progress tracking, and group competition with an 8-bit/terminal aesthetic.
 
-**Tech Stack:** React 18 + TypeScript + Vite + Tailwind CSS + Supabase
+**Tech Stack:** React 19 + TypeScript + Vite 7 + Tailwind CSS + Supabase
 **Domain:** biblicalbattleplans.com
 **Priority Reading Plan:** Professor Grant Horner's System (validates partial completion)
 
@@ -455,13 +455,116 @@ Routes:
 
 ## Success Criteria for MVP
 
-- [ ] User can sign up and log in
-- [ ] User can browse reading plans
-- [ ] User can start a reading plan
-- [ ] User can mark daily readings complete
-- [ ] Partial completion works for multi-section plans (Horner's 10 lists)
-- [ ] Streak tracking displays correctly
-- [ ] Dashboard shows all active plans
-- [ ] 8-bit terminal aesthetic throughout
-- [ ] Mobile responsive design
+- [x] User can sign up and log in
+- [x] User can browse reading plans
+- [x] User can start a reading plan
+- [x] User can mark daily readings complete
+- [x] Partial completion works for multi-section plans (Horner's 10 lists)
+- [x] Streak tracking displays correctly
+- [x] Dashboard shows all active plans
+- [x] 8-bit terminal aesthetic throughout
+- [ ] Mobile responsive design (needs testing)
 - [ ] Deployed to production
+
+---
+
+## Current Status (Updated December 25, 2025)
+
+### Completed Phases
+
+| Phase | Status | Notes |
+|-------|--------|-------|
+| Phase 0: Pre-Setup | ✅ Complete | Supabase project created, auth configured |
+| Phase 1: Project Init | ✅ Complete | Vite + React + TypeScript + Tailwind |
+| Phase 2: Supabase Setup | ✅ Complete | Schema, RLS, seed data for 3 plans |
+| Phase 3: Core UI | ✅ Complete | Button, Card, Input, ProgressBar, Badge, etc. |
+| Phase 4: Authentication | ✅ Complete | Email + Google OAuth, password reset |
+| Phase 5: Reading Plans | ✅ Complete | All 3 plan types working |
+| Phase 6: Dashboard | ✅ Complete | Active campaigns, stats widget |
+| Phase 7: Profile & Stats | ✅ Complete | Profile page, streak tracking |
+| Phase 8: Routing | ✅ Complete | All routes configured with protected access |
+| Phase 9: Deployment | ⏳ Pending | Ready to deploy |
+
+### Bug Fixes Applied
+
+1. **Supabase Type Casting** - Fixed `never` type errors on insert/update operations using `ReturnType<typeof supabase.from>` casting
+2. **Email Confirmation UX** - Added clear messaging about email verification requirement on signup and helpful error messages on login
+3. **Username Sync** - Fixed signup flow to store username in user metadata and sync to profile on email confirmation
+4. **Plan Structure Handling** - Fixed `getTodaysReading()` to properly handle all three plan types:
+   - `cycling_lists` (Horner's) - Uses `lists` array with independent cycling
+   - `sequential` (Canonical) - Uses `books` array with `chapters_per_day`
+   - `sectional` (Discipleship Journal) - Uses `sections` array
+
+---
+
+## Next Steps
+
+### Immediate (Pre-Deployment Testing)
+
+1. **End-to-End Testing**
+   - [ ] Test complete signup → email confirmation → login flow
+   - [ ] Test Google OAuth flow
+   - [ ] Test starting each of the 3 plan types
+   - [ ] Test marking sections complete and day progression
+   - [ ] Test streak calculation accuracy
+   - [ ] Verify profile stats update correctly
+
+2. **Mobile Responsiveness**
+   - [ ] Test on mobile viewport sizes
+   - [ ] Verify touch interactions work properly
+   - [ ] Check navigation menu on mobile
+
+3. **Edge Cases**
+   - [ ] Test behavior when completing final day of a plan
+   - [ ] Test behavior when streak breaks
+   - [ ] Test with no active plans
+   - [ ] Test password reset flow
+
+### Deployment (Phase 9)
+
+1. **Vercel Setup**
+   - [ ] Connect GitHub repository to Vercel
+   - [ ] Configure environment variables (VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY)
+   - [ ] Set up custom domain (biblicalbattleplans.com)
+
+2. **Production Supabase**
+   - [ ] Update Site URL in Supabase Auth settings
+   - [ ] Add production domain to Redirect URLs
+   - [ ] Update Google OAuth redirect URIs
+
+3. **Post-Deployment**
+   - [ ] Verify all auth flows work on production
+   - [ ] Test database operations with RLS
+   - [ ] Monitor for errors
+
+### Future Enhancements (Post-MVP)
+
+1. **Groups Feature (Phase 2)**
+   - Group creation and management
+   - Group leaderboards
+   - Group challenges/competitions
+
+2. **Achievements System**
+   - Unlock badges for milestones
+   - Achievement notifications
+   - Achievement showcase on profile
+
+3. **Reading Notes**
+   - Add notes/reflections to daily readings
+   - Search through past notes
+   - Share notes with group (optional)
+
+4. **Calendar View**
+   - Visual calendar of reading history
+   - Missed day indicators
+   - Catch-up suggestions
+
+5. **Push Notifications**
+   - Daily reading reminders
+   - Streak warning alerts
+   - Group activity notifications
+
+6. **Offline Support**
+   - PWA configuration
+   - Offline reading capability
+   - Sync when back online

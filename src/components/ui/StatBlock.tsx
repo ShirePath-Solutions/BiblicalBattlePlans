@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { ArrowUp, ArrowDown, ArrowRight } from 'lucide-react'
 
 interface StatBlockProps {
   label: string
@@ -30,9 +31,9 @@ export function StatBlock({
   }
 
   const trendIcons = {
-    up: '↑',
-    down: '↓',
-    neutral: '→',
+    up: <ArrowUp className="w-3 h-3 inline" />,
+    down: <ArrowDown className="w-3 h-3 inline" />,
+    neutral: <ArrowRight className="w-3 h-3 inline" />,
   }
 
   return (
@@ -57,7 +58,7 @@ export function StatBlock({
           {value}
         </span>
         {trend && trendValue && (
-          <span className={`text-sm font-mono ${trendColors[trend]}`}>
+          <span className={`text-sm font-mono flex items-center gap-1 ${trendColors[trend]}`}>
             {trendIcons[trend]} {trendValue}
           </span>
         )}

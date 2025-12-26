@@ -5,6 +5,7 @@ export interface Profile {
   username: string | null
   display_name: string | null
   avatar_url: string | null
+  streak_minimum: number // Min chapters/day for streak (default 3)
   created_at: string
   updated_at: string
 }
@@ -67,12 +68,16 @@ export interface ReadingSection {
 
 // User Plan Types
 
+// Maps list_id to current chapter index (0-based)
+export type ListPositions = Record<string, number>
+
 export interface UserPlan {
   id: string
   user_id: string
   plan_id: string
   start_date: string
-  current_day: number
+  current_day: number // Legacy - still used for non-cycling plans
+  list_positions: ListPositions // For cycling plans: position in each list
   is_completed: boolean
   completed_at: string | null
   created_at: string
@@ -84,10 +89,10 @@ export interface DailyProgress {
   id: string
   user_id: string
   user_plan_id: string
-  day_number: number
-  date: string
-  completed_sections: string[] // Array of section IDs
-  is_complete: boolean
+  day_number: number // Legacy - kept for backwards compatibility
+  date: string // Primary key for tracking - user's local date
+  completed_sections: string[] // Format: ["listId:chapterIndex", ...] e.g. ["list1:5", "list1:6", "list2:0"]
+  is_complete: boolean // For non-cycling plans; cycling plans ignore this
   notes: string | null
   created_at: string
   updated_at: string

@@ -1,3 +1,5 @@
+import { Check } from 'lucide-react'
+
 interface ProgressBarProps {
   value: number // 0-100
   max?: number
@@ -120,7 +122,7 @@ export function BlockProgress({
           `}
           title={labels?.[i]}
         >
-          {i < completed ? '✓' : i + 1}
+          {i < completed ? <Check className="w-3 h-3" /> : i + 1}
         </div>
       ))}
     </div>
