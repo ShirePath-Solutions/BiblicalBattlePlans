@@ -48,8 +48,8 @@ export function Dashboard() {
   const isLoading = plansLoading || statsLoading
   const displayName = profile?.display_name || profile?.username || user?.email?.split('@')[0] || 'Soldier'
 
-  // Get active campaigns
-  const activeCampaigns = userPlans?.filter((up) => !up.is_completed) || []
+  // Get active campaigns (not completed AND not archived)
+  const activeCampaigns = userPlans?.filter((up) => !up.is_completed && !up.is_archived) || []
 
   // Use actual stats
   const userStats = stats || {

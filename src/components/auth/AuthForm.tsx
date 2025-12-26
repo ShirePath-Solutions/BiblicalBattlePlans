@@ -2,7 +2,7 @@ import { useState, type FormEvent } from 'react'
 import { Input, Button } from '../ui'
 
 interface AuthFormProps {
-  mode: 'login' | 'signup' | 'forgot-password'
+  mode: 'login' | 'signup' | 'forgot-password' | 'reset-password'
   onSubmit: (data: AuthFormData) => Promise<void>
   isLoading?: boolean
   error?: string | null
@@ -26,14 +26,31 @@ export function AuthForm({ mode, onSubmit, isLoading = false, error }: AuthFormP
     setValidationError(null)
 
     // Validation
-    if (!email) {
+    if (mode !== 'reset-password' && !email) {
       setValidationError('Email is required')
       return
     }
 
-    if (mode !== 'forgot-password' && !password) {
+    if (mode !== 'forgot-password' && mode !== 'reset-password' && !password) {
       setValidationError('Password is required')
       return
+    }
+
+    if (mode === 'reset-password') {
+      if (!password) {
+        setValidationError('Password is required')
+        return
+      }
+
+      if (password.length < 6) {
+        setValidationError('Password must be at least 6 characters')
+        return
+      }
+
+      if (password !== confirmPassword) {
+        setValidationError('Passwords do not match')
+        return
+      }
     }
 
     if (mode === 'signup') {
@@ -87,15 +104,17 @@ export function AuthForm({ mode, onSubmit, isLoading = false, error }: AuthFormP
         />
       )}
 
-      <Input
-        label="Email"
-        type="email"
-        value={email}
-        onChange={(e) => setEmail(e.target.value)}
-        placeholder="soldier@biblicalbattleplans.com"
-        disabled={isLoading}
-        autoComplete="email"
-      />
+      {mode !== 'reset-password' && (
+        <Input
+          label="Email"
+          type="email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          placeholder="soldier@biblicalbattleplans.com"
+          disabled={isLoading}
+          autoComplete="email"
+        />
+      )}
 
       {mode !== 'forgot-password' && (
         <Input
@@ -109,7 +128,7 @@ export function AuthForm({ mode, onSubmit, isLoading = false, error }: AuthFormP
         />
       )}
 
-      {mode === 'signup' && (
+      {(mode === 'signup' || mode === 'reset-password') && (
         <Input
           label="Confirm Password"
           type="password"
@@ -136,6 +155,7 @@ export function AuthForm({ mode, onSubmit, isLoading = false, error }: AuthFormP
         {mode === 'login' && '[ LOGIN ]'}
         {mode === 'signup' && '[ ENLIST ]'}
         {mode === 'forgot-password' && '[ SEND RESET LINK ]'}
+        {mode === 'reset-password' && '[ RESET PASSWORD ]'}
       </Button>
     </form>
   )

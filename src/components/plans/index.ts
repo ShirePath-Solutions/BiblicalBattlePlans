@@ -1,4 +1,5 @@
 export { PlanCard } from './PlanCard'
+export { ArchivedPlanCard } from './ArchivedPlanCard'
 export { ReadingSection } from './ReadingSection'
 export { PlanProgress } from './PlanProgress'
 export { FreeReadingInput } from './FreeReadingInput'

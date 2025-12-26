@@ -1,5 +1,5 @@
 import { useParams, useNavigate, Link } from 'react-router-dom'
-import { Swords, BookOpen, ChevronRight } from 'lucide-react'
+import { Swords, BookOpen, ChevronRight, Archive } from 'lucide-react'
 import {
   useUserPlan,
   useDailyProgress,
@@ -8,6 +8,7 @@ import {
   useAdvanceList,
   useAdvanceDay,
   useLogFreeReading,
+  useArchivePlan,
   getCurrentReadings,
   getTodaysReading,
   calculatePlanProgress,
@@ -29,11 +30,12 @@ export function ActivePlan() {
   const advanceList = useAdvanceList()
   const advanceDay = useAdvanceDay()
   const logFreeReading = useLogFreeReading()
+  const archivePlan = useArchivePlan()
 
   const isLoading = planLoading || progressLoading
   const isMutating = markChapterRead.isPending || markSectionComplete.isPending ||
                      advanceList.isPending || advanceDay.isPending ||
-                     logFreeReading.isPending
+                     logFreeReading.isPending || archivePlan.isPending
 
   if (isLoading) {
     return (
@@ -48,8 +50,8 @@ export function ActivePlan() {
       <Card>
         <CardContent className="text-center py-8">
           <p className="text-alert-red">! ERROR: Campaign not found</p>
-          <Button variant="secondary" onClick={() => navigate('/plans')} className="mt-4">
-            Back to Plans
+          <Button variant="secondary" onClick={() => navigate('/')} className="mt-4">
+            Back to Dashboard
           </Button>
         </CardContent>
       </Card>
@@ -96,6 +98,19 @@ export function ActivePlan() {
   })()
 
   const daysAheadBehind = userPlan.current_day - daysOnPlan
+
+  const handleArchive = async () => {
+    if (!id) return
+
+    const confirmed = window.confirm(
+      'Archive this campaign? It will be hidden from Today\'s Missions but all progress will be preserved. You can restore it later from the Plans page.'
+    )
+
+    if (confirmed) {
+      await archivePlan.mutateAsync(id)
+      navigate('/plans')
+    }
+  }
 
   const handleToggleSection = async (section: typeof todaysReading[0]) => {
     if (!id || !userPlan) return
@@ -154,10 +169,10 @@ export function ActivePlan() {
     <div className="max-w-3xl mx-auto space-y-6">
       {/* Back button */}
       <Link
-        to="/plans"
+        to="/"
         className="text-terminal-gray-400 hover:text-terminal-green transition-colors inline-block"
       >
-        {'< Back to Plans'}
+        {'< Back to Dashboard'}
       </Link>
 
       {/* Campaign Header */}
@@ -483,6 +498,29 @@ export function ActivePlan() {
           </CardContent>
         </Card>
       )}
+
+      {/* Archive Action */}
+      <Card>
+        <CardContent className="py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex-1">
+              <h3 className="text-terminal-gray-300 font-medium">Archive Campaign</h3>
+              <p className="text-terminal-gray-500 text-sm mt-1">
+                Hide from Today's Missions while preserving all progress
+              </p>
+            </div>
+            <Button
+              variant="ghost"
+              onClick={handleArchive}
+              isLoading={archivePlan.isPending}
+              disabled={isMutating}
+              leftIcon={<Archive className="w-4 h-4" />}
+            >
+              ARCHIVE
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Quick Actions */}
       <div className="flex gap-4">

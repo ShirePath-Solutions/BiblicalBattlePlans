@@ -3,7 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { useAuth } from './hooks/useAuth'
 import { ProtectedRoute } from './components/auth'
 import { Layout } from './components/Layout'
-import { Login, Signup, ForgotPassword, Dashboard, Plans, PlanDetail, ActivePlan, Profile } from './pages'
+import { Login, Signup, ForgotPassword, ResetPassword, Dashboard, Plans, PlanDetail, ActivePlan, Profile } from './pages'
 import { LoadingOverlay } from './components/ui'
 
 function App() {
@@ -25,6 +25,7 @@ function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
 
         {/* Protected routes */}
         <Route

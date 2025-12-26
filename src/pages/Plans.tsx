@@ -1,5 +1,5 @@
 import { useReadingPlans, useUserPlans } from '../hooks/usePlans'
-import { PlanCard } from '../components/plans'
+import { PlanCard, ArchivedPlanCard } from '../components/plans'
 import { LoadingSpinner, Card, CardContent } from '../components/ui'
 
 export function Plans() {
@@ -27,11 +27,14 @@ export function Plans() {
     )
   }
 
-  // Separate active campaigns from available plans
-  const activeCampaigns = userPlans?.filter((up) => !up.is_completed) || []
+  // Active campaigns: not completed AND not archived
+  const activeCampaigns = userPlans?.filter((up) => !up.is_completed && !up.is_archived) || []
   const activePlanIds = activeCampaigns.map((up) => up.plan_id)
 
-  // Plans that user hasn't started or has completed
+  // Archived plans: all plans where is_archived = true
+  const archivedPlans = userPlans?.filter((up) => up.is_archived) || []
+
+  // Plans that user hasn't started or has completed/archived
   const availablePlans = plans?.filter((p) => !activePlanIds.includes(p.id)) || []
 
   return (
@@ -65,6 +68,20 @@ export function Plans() {
           </Card>
         )}
       </section>
+
+      {/* Archived Plans */}
+      {archivedPlans.length > 0 && (
+        <section className="border-t border-terminal-gray-600 pt-6">
+          <h2 className="text-lg font-pixel text-terminal-green mb-4">
+            ARCHIVED CAMPAIGNS ({archivedPlans.length})
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {archivedPlans.map((userPlan) => (
+              <ArchivedPlanCard key={userPlan.id} userPlan={userPlan} />
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* Plan Types Legend */}
       <section className="border-t border-terminal-gray-600 pt-6">

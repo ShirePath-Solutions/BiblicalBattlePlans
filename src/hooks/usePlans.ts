@@ -790,3 +790,63 @@ export function getChaptersReadToday(
 
   return progress.completed_sections.length
 }
+
+// Archive a user plan (hide from Today's Missions)
+export function useArchivePlan() {
+  const queryClient = useQueryClient()
+  const { user } = useAuth()
+
+  return useMutation({
+    mutationFn: async (userPlanId: string) => {
+      if (!user) throw new Error('Not authenticated')
+
+      const { data, error } = await (supabase
+        .from('user_plans') as ReturnType<typeof supabase.from>)
+        .update({
+          is_archived: true,
+          archived_at: new Date().toISOString(),
+        })
+        .eq('id', userPlanId)
+        .select()
+        .single()
+
+      if (error) throw error
+      return data as UserPlan
+    },
+    onSuccess: () => {
+      if (user) {
+        queryClient.invalidateQueries({ queryKey: planKeys.userPlans(user.id) })
+      }
+    },
+  })
+}
+
+// Unarchive a user plan (restore to Today's Missions)
+export function useUnarchivePlan() {
+  const queryClient = useQueryClient()
+  const { user } = useAuth()
+
+  return useMutation({
+    mutationFn: async (userPlanId: string) => {
+      if (!user) throw new Error('Not authenticated')
+
+      const { data, error} = await (supabase
+        .from('user_plans') as ReturnType<typeof supabase.from>)
+        .update({
+          is_archived: false,
+          archived_at: null,
+        })
+        .eq('id', userPlanId)
+        .select()
+        .single()
+
+      if (error) throw error
+      return data as UserPlan
+    },
+    onSuccess: () => {
+      if (user) {
+        queryClient.invalidateQueries({ queryKey: planKeys.userPlans(user.id) })
+      }
+    },
+  })
+}

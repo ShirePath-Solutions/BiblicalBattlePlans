@@ -113,6 +113,8 @@ export interface UserPlan {
   list_positions: ListPositions // For cycling plans: position in each list
   is_completed: boolean
   completed_at: string | null
+  is_archived: boolean
+  archived_at: string | null
   created_at: string
   // Joined data
   plan?: ReadingPlan

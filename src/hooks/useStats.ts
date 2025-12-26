@@ -87,8 +87,8 @@ export function useStats() {
       // Calculate streak using streak minimum (with actual chapter counts)
       const { currentStreak, longestStreak } = calculateStreaks(progress, streakMinimum, getChaptersForProgress)
 
-      // Count plans
-      const plansActive = plans.filter((p) => !p.is_completed).length
+      // Count plans (exclude archived from active count)
+      const plansActive = plans.filter((p) => !p.is_completed && !p.is_archived).length
       const plansCompleted = plans.filter((p) => p.is_completed).length
 
       // Total unique days with enough chapters to count (using actual chapter counts)
@@ -121,6 +121,7 @@ interface DailyProgressRecord {
 interface UserPlanWithPlan {
   id: string
   is_completed: boolean
+  is_archived: boolean
   plan?: {
     daily_structure: unknown
   }

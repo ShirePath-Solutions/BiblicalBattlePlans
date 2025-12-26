@@ -18,6 +18,7 @@ interface AuthActions {
   signInWithGoogle: () => Promise<{ error: Error | null }>
   signOut: () => Promise<void>
   resetPassword: (email: string) => Promise<{ error: Error | null }>
+  updatePassword: (newPassword: string) => Promise<{ error: Error | null }>
   updateProfile: (data: Partial<Profile>) => Promise<{ error: Error | null }>
   refreshProfile: () => Promise<void>
 }
@@ -193,6 +194,18 @@ export const useAuth = create<AuthStore>((set, get) => ({
   resetPassword: async (email: string) => {
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
       redirectTo: `${window.location.origin}/reset-password`,
+    })
+
+    if (error) {
+      return { error }
+    }
+
+    return { error: null }
+  },
+
+  updatePassword: async (newPassword: string) => {
+    const { error } = await supabase.auth.updateUser({
+      password: newPassword
     })
 
     if (error) {
