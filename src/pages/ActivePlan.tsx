@@ -78,7 +78,10 @@ export function ActivePlan() {
   // Calculate days on plan (actual elapsed days since start)
   const daysOnPlan = (() => {
     if (!userPlan.start_date) return 1
-    const startDate = new Date(userPlan.start_date)
+
+    // Parse date string in local timezone to avoid UTC offset issues
+    const [year, month, day] = userPlan.start_date.split('-').map(Number)
+    const startDate = new Date(year, month - 1, day) // month is 0-indexed
     const today = new Date()
     startDate.setHours(0, 0, 0, 0)
     today.setHours(0, 0, 0, 0)
