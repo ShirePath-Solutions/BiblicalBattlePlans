@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
+import { Mail } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
 import { AuthForm, GoogleAuthButton, type AuthFormData } from '../components/auth'
 import { Card, CardHeader, CardContent, CardFooter } from '../components/ui'
@@ -10,6 +11,7 @@ export function Login() {
   const { signIn, user } = useAuth()
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [emailNotConfirmed, setEmailNotConfirmed] = useState(false)
 
   // Get the redirect path from location state, or default to dashboard
   const from = (location.state as { from?: Location })?.from?.pathname || '/'
@@ -24,35 +26,38 @@ export function Login() {
   const handleSubmit = async (data: AuthFormData) => {
     setIsLoading(true)
     setError(null)
+    setEmailNotConfirmed(false)
 
     try {
       const { error } = await signIn(data.email, data.password!)
 
-      // Always stop loading after sign in attempt
-      setIsLoading(false)
-
       if (error) {
-        console.error('Login error:', error)
+        // Check if this is an email confirmation issue
+        const errorMessage = error.message?.toLowerCase() || ''
+        const isEmailNotConfirmed =
+          errorMessage.includes('email not confirmed') ||
+          errorMessage.includes('email not verified') ||
+          errorMessage.includes('confirm your email')
 
-        // Provide helpful error messages
-        let errorMessage = error.message || 'An error occurred during login'
-
-        if (error.message?.includes('Invalid login credentials')) {
-          errorMessage = 'Invalid email or password. Please check your credentials and try again.'
-        } else if (error.message?.includes('Email not confirmed')) {
-          errorMessage = 'Email not confirmed. Please check your inbox and click the confirmation link before logging in.'
-        } else if (error.message?.includes('Email not verified')) {
-          errorMessage = 'Email not verified. Please check your inbox and click the verification link before logging in.'
-        } else if (('status' in error && error.status === 400) || error.message?.includes('400')) {
-          errorMessage = 'Unable to sign in. This may be because your email is not confirmed yet. Please check your inbox for a confirmation link.'
+        if (isEmailNotConfirmed) {
+          setEmailNotConfirmed(true)
+          setIsLoading(false)
+          return
         }
 
-        console.log('Setting error message:', errorMessage)
-        setError(errorMessage)
+        // For "Invalid login credentials", this could be wrong password OR unconfirmed email
+        // Supabase returns this generic message for security (prevent email enumeration)
+        if (errorMessage.includes('invalid login credentials')) {
+          setError('Invalid email or password. If you recently signed up, make sure you confirmed your email first.')
+          setIsLoading(false)
+          return
+        }
+
+        // Show any other error message
+        setError(error.message || 'An error occurred. Please try again.')
+        setIsLoading(false)
       }
     } catch (err) {
-      // Catch any unexpected errors
-      console.error('Unexpected error:', err)
       const errorMessage = err instanceof Error ? err.message : 'An unexpected error occurred. Please try again.'
       setError(errorMessage)
       setIsLoading(false)
@@ -60,26 +65,78 @@ export function Login() {
     // Don't navigate here - let the useEffect handle it when user state updates
   }
 
-  return (
-    <div className="min-h-screen bg-terminal-dark flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
-        {/* ASCII Art Logo */}
-        <pre className="text-terminal-green text-xs mb-6 text-center font-mono overflow-hidden">
-{`
- ╔══════════════════════════════════╗
- ║   BIBLICAL BATTLE PLANS          ║
- ║   ━━━━━━━━━━━━━━━━━━━━           ║
- ║   "The sword of the Spirit"      ║
- ╚══════════════════════════════════╝
-`}
-        </pre>
+  if (emailNotConfirmed) {
+    return (
+      <div className="min-h-screen bg-parchment-dark flex items-center justify-center p-4">
+        <div className="w-full max-w-md">
+          <Card variant="elevated">
+            <CardHeader>
+              <h1 className="font-pixel text-sm text-ink text-center">
+                EMAIL NOT CONFIRMED
+              </h1>
+            </CardHeader>
 
-        <Card>
+            <CardContent className="text-center space-y-4">
+              <div className="flex justify-center">
+                <div className="w-16 h-16 bg-warning/20 border-2 border-warning flex items-center justify-center">
+                  <Mail className="w-8 h-8 text-warning" />
+                </div>
+              </div>
+
+              <div className="p-4 bg-warning/10 border border-warning text-left space-y-2">
+                <p className="font-pixel text-[0.625rem] text-warning">
+                  ACTION REQUIRED
+                </p>
+                <p className="font-pixel text-[0.5rem] text-ink">
+                  You must confirm your email address before you can login.
+                </p>
+                <p className="font-pixel text-[0.5rem] text-ink-muted">
+                  Check your inbox (and spam folder) for a confirmation link from us.
+                </p>
+              </div>
+            </CardContent>
+
+            <CardFooter className="flex flex-col gap-3 text-center">
+              <button
+                onClick={() => setEmailNotConfirmed(false)}
+                className="font-pixel text-[0.625rem] text-gold hover:underline"
+              >
+                I've confirmed my email — Try again
+              </button>
+              <p className="font-pixel text-[0.5rem] text-ink-muted">
+                Didn't receive an email?{' '}
+                <Link
+                  to="/signup"
+                  className="text-gold hover:underline"
+                >
+                  Try signing up again
+                </Link>
+              </p>
+            </CardFooter>
+          </Card>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="min-h-screen bg-parchment-dark flex items-center justify-center p-4">
+      <div className="w-full max-w-md">
+        {/* Logo Placeholder */}
+        <div className="flex flex-col items-center mb-8">
+          <div className="w-20 h-20 bg-gradient-to-br from-gold to-bronze border-2 border-gold-dark flex items-center justify-center shadow-[0_4px_12px_var(--shadow-color)] mb-4">
+            <span className="font-pixel text-sm text-ink">BBP</span>
+          </div>
+          <h1 className="font-pixel text-[0.75rem] text-ink text-center">BIBLICAL BATTLE PLANS</h1>
+          <p className="font-pixel text-[0.5rem] text-ink-muted text-center mt-1">"The sword of the Spirit"</p>
+        </div>
+
+        <Card variant="elevated">
           <CardHeader>
-            <h1 className="text-xl font-pixel text-terminal-green text-center">
-              SOLDIER LOGIN
+            <h1 className="font-pixel text-sm text-ink text-center">
+              HERO LOGIN
             </h1>
-            <p className="text-terminal-gray-400 text-sm text-center mt-2">
+            <p className="font-pixel text-[0.5rem] text-ink-muted text-center mt-2">
               Enter your credentials to continue
             </p>
           </CardHeader>
@@ -94,10 +151,10 @@ export function Login() {
 
             <div className="relative">
               <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-terminal-gray-500" />
+                <div className="w-full border-t border-border-subtle" />
               </div>
-              <div className="relative flex justify-center text-sm">
-                <span className="px-2 bg-terminal-darker text-terminal-gray-400">
+              <div className="relative flex justify-center">
+                <span className="px-3 bg-parchment font-pixel text-[0.5rem] text-ink-muted">
                   OR
                 </span>
               </div>
@@ -106,18 +163,18 @@ export function Login() {
             <GoogleAuthButton />
           </CardContent>
 
-          <CardFooter className="flex flex-col gap-3 text-center text-sm">
+          <CardFooter className="flex flex-col gap-3 text-center">
             <Link
               to="/forgot-password"
-              className="text-terminal-gray-400 hover:text-terminal-green transition-colors"
+              className="font-pixel text-[0.5rem] text-ink-muted hover:text-gold transition-colors"
             >
-              {'> Forgot password?'}
+              Forgot password?
             </Link>
-            <p className="text-terminal-gray-400">
-              New recruit?{' '}
+            <p className="font-pixel text-[0.5rem] text-ink-muted">
+              New hero?{' '}
               <Link
                 to="/signup"
-                className="text-terminal-green hover:underline"
+                className="text-gold hover:underline"
               >
                 Enlist here
               </Link>
@@ -125,8 +182,8 @@ export function Login() {
           </CardFooter>
         </Card>
 
-        <p className="text-terminal-gray-500 text-xs text-center mt-6">
-          "Put on the full armor of God" - Ephesians 6:11
+        <p className="font-pixel text-[0.5rem] text-ink-muted text-center mt-6">
+          "Put on the full armor of God" — Ephesians 6:11
         </p>
       </div>
     </div>

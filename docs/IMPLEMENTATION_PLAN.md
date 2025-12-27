@@ -503,12 +503,12 @@ Routes:
 ### Immediate (Pre-Deployment Testing)
 
 1. **End-to-End Testing**
-   - [ ] Test complete signup → email confirmation → login flow
-   - [ ] Test Google OAuth flow
-   - [ ] Test starting each of the 3 plan types
-   - [ ] Test marking sections complete and day progression
-   - [ ] Test streak calculation accuracy
-   - [ ] Verify profile stats update correctly
+   - [x] Test complete signup → email confirmation → login flow
+   - [x] Test Google OAuth flow
+   - [x] Test starting each of the 3 plan types
+   - [x] Test marking sections complete and day progression
+   - [x] Test streak calculation accuracy
+   - [x] Verify profile stats update correctly
 
 2. **Mobile Responsiveness**
    - [ ] Test on mobile viewport sizes
@@ -519,24 +519,24 @@ Routes:
    - [ ] Test behavior when completing final day of a plan
    - [ ] Test behavior when streak breaks
    - [ ] Test with no active plans
-   - [ ] Test password reset flow
+   - [x] Test password reset flow
 
 ### Deployment (Phase 9)
 
 1. **Vercel Setup**
-   - [ ] Connect GitHub repository to Vercel
-   - [ ] Configure environment variables (VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY)
-   - [ ] Set up custom domain (biblicalbattleplans.com)
+   - [x] Connect GitHub repository to Vercel
+   - [x] Configure environment variables (VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY)
+   - [x] Set up custom domain (biblicalbattleplans.com)
 
 2. **Production Supabase**
-   - [ ] Update Site URL in Supabase Auth settings
-   - [ ] Add production domain to Redirect URLs
-   - [ ] Update Google OAuth redirect URIs
+   - [x] Update Site URL in Supabase Auth settings
+   - [x] Add production domain to Redirect URLs
+   - [x] Update Google OAuth redirect URIs
 
 3. **Post-Deployment**
    - [ ] Verify all auth flows work on production
-   - [ ] Test database operations with RLS
-   - [ ] Monitor for errors
+   - [x] Test database operations with RLS
+   - [x] Monitor for errors
 
 ### Future Enhancements (Post-MVP)
 

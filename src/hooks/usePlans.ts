@@ -21,6 +21,7 @@ export const planKeys = {
   userPlans: (userId: string) => ['userPlans', userId] as const,
   userPlan: (id: string) => ['userPlan', id] as const,
   dailyProgress: (userPlanId: string, date: string) => ['dailyProgress', userPlanId, date] as const,
+  todaysTotalProgress: (userId: string, date: string) => ['todaysTotalProgress', userId, date] as const,
 }
 
 // Get today's date in user's local timezone (YYYY-MM-DD)
@@ -127,6 +128,57 @@ export function useDailyProgress(userPlanId: string, date?: string) {
       return data as DailyProgress | null
     },
     enabled: !!userPlanId,
+  })
+}
+
+// Fetch total chapters read today across ALL plans (for global streak tracking)
+export function useTodaysTotalChapters() {
+  const { user } = useAuth()
+  const today = getLocalDate()
+
+  return useQuery({
+    queryKey: planKeys.todaysTotalProgress(user?.id || '', today),
+    queryFn: async () => {
+      if (!user) return 0
+
+      // Fetch all progress for today across all plans
+      const { data: progressData, error: progressError } = await (supabase
+        .from('daily_progress') as ReturnType<typeof supabase.from>)
+        .select('*, user_plan:user_plans(*, plan:reading_plans(*))')
+        .eq('user_id', user.id)
+        .eq('date', today)
+
+      if (progressError) throw progressError
+      if (!progressData || progressData.length === 0) return 0
+
+      type ProgressWithPlan = {
+        completed_sections?: string[]
+        user_plan?: {
+          plan?: {
+            daily_structure?: { type: string; chapters_per_day?: number }
+          }
+        }
+      }
+
+      // Calculate total chapters based on plan types
+      let totalChapters = 0
+      for (const progress of progressData as ProgressWithPlan[]) {
+        const sectionsCount = progress.completed_sections?.length || 0
+        const planType = progress.user_plan?.plan?.daily_structure?.type
+        const chaptersPerDay = progress.user_plan?.plan?.daily_structure?.chapters_per_day || 3
+
+        if (planType === 'sequential') {
+          // For sequential plans, each completed section is chapters_per_day chapters
+          totalChapters += sectionsCount * chaptersPerDay
+        } else {
+          // For cycling, sectional, free reading - each section is one chapter
+          totalChapters += sectionsCount
+        }
+      }
+
+      return totalChapters
+    },
+    enabled: !!user,
   })
 }
 
@@ -255,6 +307,8 @@ export function useMarkChapterRead() {
       queryClient.invalidateQueries({ queryKey: planKeys.userPlan(variables.userPlanId) })
       if (user) {
         queryClient.invalidateQueries({ queryKey: planKeys.userPlans(user.id) })
+        queryClient.invalidateQueries({ queryKey: planKeys.todaysTotalProgress(user.id, today) })
+        queryClient.invalidateQueries({ queryKey: ['stats', user.id] })
       }
     },
   })
@@ -307,6 +361,8 @@ export function useAdvanceList() {
       queryClient.invalidateQueries({ queryKey: planKeys.userPlan(variables.userPlanId) })
       if (user) {
         queryClient.invalidateQueries({ queryKey: planKeys.userPlans(user.id) })
+        queryClient.invalidateQueries({ queryKey: planKeys.todaysTotalProgress(user.id, today) })
+        queryClient.invalidateQueries({ queryKey: ['stats', user.id] })
       }
     },
   })
@@ -343,6 +399,8 @@ export function useAdvanceDay() {
       queryClient.invalidateQueries({ queryKey: planKeys.userPlan(variables.userPlanId) })
       if (user) {
         queryClient.invalidateQueries({ queryKey: planKeys.userPlans(user.id) })
+        queryClient.invalidateQueries({ queryKey: planKeys.todaysTotalProgress(user.id, today) })
+        queryClient.invalidateQueries({ queryKey: ['stats', user.id] })
       }
     },
   })
@@ -425,6 +483,7 @@ export function useLogFreeReading() {
       queryClient.invalidateQueries({ queryKey: planKeys.userPlan(variables.userPlanId) })
       if (user) {
         queryClient.invalidateQueries({ queryKey: planKeys.userPlans(user.id) })
+        queryClient.invalidateQueries({ queryKey: planKeys.todaysTotalProgress(user.id, today) })
         queryClient.invalidateQueries({ queryKey: ['stats', user.id] })
       }
     },
@@ -499,6 +558,11 @@ export function useMarkSectionComplete() {
       queryClient.invalidateQueries({
         queryKey: planKeys.dailyProgress(variables.userPlanId, today),
       })
+
+      // Always invalidate stats when sections are marked (affects chapter count and streak)
+      if (user) {
+        queryClient.invalidateQueries({ queryKey: ['stats', user.id] })
+      }
 
       if (data.is_complete && user) {
         queryClient.invalidateQueries({ queryKey: planKeys.userPlan(variables.userPlanId) })
