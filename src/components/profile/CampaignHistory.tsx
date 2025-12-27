@@ -33,6 +33,7 @@ export function CampaignHistory() {
           {activePlans.length > 0 ? (
             <div className="space-y-3">
               {activePlans.map((userPlan) => {
+                const isFreeReading = userPlan.plan.daily_structure.type === 'free_reading'
                 const progress = calculatePlanProgress(userPlan, userPlan.plan)
                 return (
                   <Link
@@ -46,11 +47,16 @@ export function CampaignHistory() {
                           {userPlan.plan.name.toUpperCase()}
                         </div>
                         <div className="font-pixel text-[0.5rem] text-ink-muted mt-1">
-                          Day {userPlan.current_day} • Started{' '}
-                          {new Date(userPlan.start_date).toLocaleDateString()}
+                          {isFreeReading ? (
+                            <>Started {new Date(userPlan.start_date).toLocaleDateString()}</>
+                          ) : (
+                            <>Day {userPlan.current_day} • Started {new Date(userPlan.start_date).toLocaleDateString()}</>
+                          )}
                         </div>
                       </div>
-                      <div className="font-pixel text-[0.625rem] text-gold">{progress}%</div>
+                      <div className="font-pixel text-[0.625rem] text-gold">
+                        {isFreeReading ? `${progress} ch` : `${progress}%`}
+                      </div>
                     </div>
                   </Link>
                 )

@@ -80,10 +80,10 @@ export function StreakBadge({ days, className = '' }: StreakBadgeProps) {
   }
 
   const getLabel = (): string => {
-    if (days >= 30) return 'LEGENDARY'
-    if (days >= 14) return 'VETERAN'
-    if (days >= 7) return 'WARRIOR'
-    if (days >= 3) return 'SOLDIER'
+    if (days >= 90) return 'LEGENDARY'
+    if (days >= 60) return 'VETERAN'
+    if (days >= 30) return 'WARRIOR'
+    if (days >= 7) return 'SOLDIER'
     return 'RECRUIT'
   }
 

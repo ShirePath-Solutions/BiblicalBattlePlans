@@ -84,18 +84,24 @@ export function useStats() {
         return sectionsCount
       }
 
-      // Calculate streak using streak minimum (with actual chapter counts)
-      const { currentStreak, longestStreak } = calculateStreaks(progress, streakMinimum, getChaptersForProgress)
+      // Aggregate chapters by date across ALL plans
+      const chaptersByDate = new Map<string, number>()
+      for (const p of progress) {
+        const chapters = getChaptersForProgress(p)
+        chaptersByDate.set(p.date, (chaptersByDate.get(p.date) || 0) + chapters)
+      }
+
+      // Calculate streak using aggregated daily totals
+      const { currentStreak, longestStreak } = calculateStreaks(chaptersByDate, streakMinimum)
 
       // Count plans (exclude archived from active count)
       const plansActive = plans.filter((p) => !p.is_completed && !p.is_archived).length
       const plansCompleted = plans.filter((p) => p.is_completed).length
 
-      // Total unique days with enough chapters to count (using actual chapter counts)
-      const qualifyingDays = progress.filter(
-        (p) => getChaptersForProgress(p) >= streakMinimum
-      )
-      const uniqueDays = new Set(qualifyingDays.map((p) => p.date)).size
+      // Total unique days with enough chapters to count (using aggregated totals)
+      const uniqueDays = [...chaptersByDate.entries()].filter(
+        ([, chapters]) => chapters >= streakMinimum
+      ).length
 
       return {
         total_chapters_read: totalChapters,
@@ -134,26 +140,21 @@ function parseLocalDate(dateStr: string): Date {
 }
 
 function calculateStreaks(
-  progress: DailyProgressRecord[],
-  streakMinimum: number = 3,
-  getChapters?: (p: DailyProgressRecord) => number
+  chaptersByDate: Map<string, number>,
+  streakMinimum: number = 3
 ): {
   currentStreak: number
   longestStreak: number
 } {
-  if (progress.length === 0) {
+  if (chaptersByDate.size === 0) {
     return { currentStreak: 0, longestStreak: 0 }
   }
 
-  // Chapter counter function (defaults to counting sections)
-  const countChapters = getChapters || ((p: DailyProgressRecord) => p.completed_sections?.length || 0)
-
-  // Get unique dates where user met the streak minimum, sorted descending
-  const completedDates = [...new Set(
-    progress
-      .filter((p) => countChapters(p) >= streakMinimum)
-      .map((p) => p.date)
-  )].sort((a, b) => parseLocalDate(b).getTime() - parseLocalDate(a).getTime())
+  // Get dates where user met the streak minimum (total chapters across all plans), sorted descending
+  const completedDates = [...chaptersByDate.entries()]
+    .filter(([, chapters]) => chapters >= streakMinimum)
+    .map(([date]) => date)
+    .sort((a, b) => parseLocalDate(b).getTime() - parseLocalDate(a).getTime())
 
   if (completedDates.length === 0) {
     return { currentStreak: 0, longestStreak: 0 }
@@ -215,17 +216,17 @@ export function getStreakRank(days: number): {
   nextRank: string | null
   daysToNext: number
 } {
-  if (days >= 30) {
+  if (days >= 90) {
     return { rank: 'LEGENDARY', nextRank: null, daysToNext: 0 }
   }
-  if (days >= 14) {
-    return { rank: 'VETERAN', nextRank: 'LEGENDARY', daysToNext: 30 - days }
+  if (days >= 60) {
+    return { rank: 'VETERAN', nextRank: 'LEGENDARY', daysToNext: 90 - days }
+  }
+  if (days >= 30) {
+    return { rank: 'WARRIOR', nextRank: 'VETERAN', daysToNext: 60 - days }
   }
   if (days >= 7) {
-    return { rank: 'WARRIOR', nextRank: 'VETERAN', daysToNext: 14 - days }
+    return { rank: 'SOLDIER', nextRank: 'WARRIOR', daysToNext: 30 - days }
   }
-  if (days >= 3) {
-    return { rank: 'SOLDIER', nextRank: 'WARRIOR', daysToNext: 7 - days }
-  }
-  return { rank: 'RECRUIT', nextRank: 'SOLDIER', daysToNext: 3 - days }
+  return { rank: 'RECRUIT', nextRank: 'SOLDIER', daysToNext: 7 - days }
 }

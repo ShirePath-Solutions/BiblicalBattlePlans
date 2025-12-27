@@ -7,11 +7,11 @@ import { Card, CardHeader, CardContent, CardFooter, Button, Input, LoadingSpinne
 
 // Rank definitions
 const RANKS = [
-  { name: 'LEGENDARY', minDays: 30, description: '30+ days' },
-  { name: 'VETERAN', minDays: 14, description: '14-29 days' },
-  { name: 'WARRIOR', minDays: 7, description: '7-13 days' },
-  { name: 'SOLDIER', minDays: 3, description: '3-6 days' },
-  { name: 'RECRUIT', minDays: 0, description: '0-2 days' },
+  { name: 'LEGENDARY', minDays: 90, description: '90+ days' },
+  { name: 'VETERAN', minDays: 60, description: '60-89 days' },
+  { name: 'WARRIOR', minDays: 30, description: '30-59 days' },
+  { name: 'SOLDIER', minDays: 7, description: '7-29 days' },
+  { name: 'RECRUIT', minDays: 0, description: '0-6 days' },
 ]
 
 function getCurrentRank(streak: number) {

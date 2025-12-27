@@ -10,6 +10,7 @@ import {
   useAdvanceDay,
   useLogFreeReading,
   useArchivePlan,
+  useTodaysTotalChapters,
   getCurrentReadings,
   getTodaysReading,
   calculatePlanProgress,
@@ -32,6 +33,7 @@ export function ActivePlan() {
   const advanceDay = useAdvanceDay()
   const logFreeReading = useLogFreeReading()
   const archivePlan = useArchivePlan()
+  const { data: totalChaptersToday = 0 } = useTodaysTotalChapters()
 
   const isLoading = planLoading || progressLoading
   const isMutating = markChapterRead.isPending || markSectionComplete.isPending ||
@@ -77,10 +79,13 @@ export function ActivePlan() {
     return { currentWeek, dayInWeek, totalWeeks: structure.total_weeks }
   })() : null
 
+  // Chapters read in THIS plan today (for plan-specific display)
   const chaptersReadToday = getChaptersReadToday(progress || null, plan)
+
+  // Streak is based on TOTAL chapters across ALL plans today
   const streakMinimum = profile?.streak_minimum || 3
-  const streakProgress = Math.min(chaptersReadToday, streakMinimum)
-  const streakMet = chaptersReadToday >= streakMinimum
+  const streakProgress = Math.min(totalChaptersToday, streakMinimum)
+  const streakMet = totalChaptersToday >= streakMinimum
   const overallProgress = calculatePlanProgress(userPlan, plan)
 
   // Calculate days on plan (actual elapsed days since start)
@@ -245,7 +250,7 @@ export function ActivePlan() {
         <div className="bg-gradient-to-r from-parchment-dark/40 to-transparent px-4 py-3 border-b border-border-subtle">
           <div className="flex items-center justify-between">
             <h2 className="font-pixel text-[0.75rem] text-ink">
-              TODAY'S PROGRESS
+              TODAY'S STREAK PROGRESS
             </h2>
             <div className="flex items-center gap-2">
               <BookOpen className="w-4 h-4 text-ink-muted" />

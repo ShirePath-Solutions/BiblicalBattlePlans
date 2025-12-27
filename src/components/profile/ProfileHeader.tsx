@@ -7,10 +7,10 @@ interface ProfileHeaderProps {
 
 // Rank definitions
 const RANKS = [
-  { name: 'LEGENDARY', minDays: 30 },
-  { name: 'VETERAN', minDays: 14 },
-  { name: 'WARRIOR', minDays: 7 },
-  { name: 'SOLDIER', minDays: 3 },
+  { name: 'LEGENDARY', minDays: 90 },
+  { name: 'VETERAN', minDays: 60},
+  { name: 'WARRIOR', minDays: 30 },
+  { name: 'SOLDIER', minDays: 7 },
   { name: 'RECRUIT', minDays: 0 },
 ]
 

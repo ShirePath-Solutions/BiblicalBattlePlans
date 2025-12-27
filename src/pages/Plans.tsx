@@ -33,9 +33,13 @@ export function Plans() {
 
   // Archived plans: all plans where is_archived = true
   const archivedPlans = userPlans?.filter((up) => up.is_archived) || []
+  const archivedPlanIds = archivedPlans.map((up) => up.plan_id)
 
-  // Plans that user hasn't started or has completed/archived
-  const availablePlans = plans?.filter((p) => !activePlanIds.includes(p.id)) || []
+  // Plans that user hasn't started, or has completed (but not archived)
+  // Exclude both active and archived plans from available
+  const availablePlans = plans?.filter((p) => 
+    !activePlanIds.includes(p.id) && !archivedPlanIds.includes(p.id)
+  ) || []
 
   return (
     <div className="space-y-8">
