@@ -25,8 +25,8 @@ export function ActivePlan() {
   const navigate = useNavigate()
   const { profile } = useAuth()
 
-  const { data: userPlan, isLoading: planLoading } = useUserPlan(id || '')
-  const { data: progress, isLoading: progressLoading } = useDailyProgress(id || '')
+  const { data: userPlan, isLoading: planLoading, error: planError } = useUserPlan(id || '')
+  const { data: progress, isLoading: progressLoading, error: progressError } = useDailyProgress(id || '')
   const markChapterRead = useMarkChapterRead()
   const markSectionComplete = useMarkSectionComplete()
   const advanceList = useAdvanceList()
@@ -36,6 +36,7 @@ export function ActivePlan() {
   const { data: totalChaptersToday = 0 } = useTodaysTotalChapters()
 
   const isLoading = planLoading || progressLoading
+  const error = planError || progressError
   const isMutating = markChapterRead.isPending || markSectionComplete.isPending ||
                      advanceList.isPending || advanceDay.isPending ||
                      logFreeReading.isPending || archivePlan.isPending
@@ -45,6 +46,28 @@ export function ActivePlan() {
       <div className="flex items-center justify-center py-12">
         <LoadingSpinner />
       </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <Card>
+        <CardContent className="text-center py-8">
+          <p className="font-pixel text-[0.625rem] text-danger">ERROR: Failed to load quest</p>
+          <p className="font-pixel text-[0.5rem] text-ink-muted mt-2">{error.message}</p>
+          <div className="flex gap-4 justify-center mt-4">
+            <button
+              onClick={() => window.location.reload()}
+              className="font-pixel text-[0.625rem] text-sage hover:text-sage-dark underline"
+            >
+              Refresh Page
+            </button>
+            <Button variant="secondary" onClick={() => navigate('/')}>
+              Back to Dashboard
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
     )
   }
 
@@ -133,61 +156,76 @@ export function ActivePlan() {
       .every(s => s.isCompleted)
     const willCompleteDay = isMarkingComplete && otherSectionsComplete
 
-    if (isCyclingPlan) {
-      // For cycling plans, use the chapter-based marking
-      await markChapterRead.mutateAsync({
-        userPlanId: id,
-        listId: section.listId,
-        chapterIndex: section.chapterIndex,
-        userPlan,
-      })
-    } else {
-      // For sequential/sectional plans, use section-based marking
-      await markSectionComplete.mutateAsync({
-        userPlanId: id,
-        dayNumber: userPlan.current_day,
-        sectionId: section.id,
-        totalSections: todaysReading.length,
-        existingProgress: progress || null,
-      })
-    }
+    try {
+      if (isCyclingPlan) {
+        // For cycling plans, use the chapter-based marking
+        await markChapterRead.mutateAsync({
+          userPlanId: id,
+          listId: section.listId,
+          chapterIndex: section.chapterIndex,
+          userPlan,
+        })
+      } else {
+        // For sequential/sectional plans, use section-based marking
+        await markSectionComplete.mutateAsync({
+          userPlanId: id,
+          dayNumber: userPlan.current_day,
+          sectionId: section.id,
+          totalSections: todaysReading.length,
+          existingProgress: progress || null,
+        })
+      }
 
-    // Show toast when all readings for the day are completed
-    if (willCompleteDay) {
-      toast.success("Today's reading complete!")
+      // Show toast when all readings for the day are completed
+      if (willCompleteDay) {
+        toast.success("Today's reading complete!")
+      }
+    } catch (error) {
+      toast.error('Failed to update reading. Please try again.')
+      console.error('Toggle section error:', error)
     }
   }
 
   const handleContinue = async (section: typeof todaysReading[0]) => {
     if (!id || !userPlan) return
 
-    if (isCyclingPlan) {
-      // For cycling plans, advance to next chapter in this list
-      await advanceList.mutateAsync({
-        userPlanId: id,
-        listId: section.listId,
-        userPlan,
-      })
-    } else {
-      // For sequential/sectional plans, advance to next day
-      await advanceDay.mutateAsync({
-        userPlanId: id,
-        userPlan,
-      })
+    try {
+      if (isCyclingPlan) {
+        // For cycling plans, advance to next chapter in this list
+        await advanceList.mutateAsync({
+          userPlanId: id,
+          listId: section.listId,
+          userPlan,
+        })
+      } else {
+        // For sequential/sectional plans, advance to next day
+        await advanceDay.mutateAsync({
+          userPlanId: id,
+          userPlan,
+        })
+      }
+    } catch (error) {
+      toast.error('Failed to continue. Please try again.')
+      console.error('Continue error:', error)
     }
   }
 
   const handleLogFreeReading = async (chapters: number, notes?: string) => {
     if (!id || !userPlan) return
 
-    await logFreeReading.mutateAsync({
-      userPlanId: id,
-      chapters,
-      notes,
-      userPlan,
-    })
+    try {
+      await logFreeReading.mutateAsync({
+        userPlanId: id,
+        chapters,
+        notes,
+        userPlan,
+      })
 
-    toast.success(`Logged ${chapters} chapter${chapters !== 1 ? 's' : ''}!`)
+      toast.success(`Logged ${chapters} chapter${chapters !== 1 ? 's' : ''}!`)
+    } catch (error) {
+      toast.error('Failed to log reading. Please try again.')
+      console.error('Log free reading error:', error)
+    }
   }
 
   return (

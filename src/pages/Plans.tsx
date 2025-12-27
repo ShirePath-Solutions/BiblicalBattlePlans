@@ -4,9 +4,10 @@ import { LoadingSpinner, Card, CardContent } from '../components/ui'
 
 export function Plans() {
   const { data: plans, isLoading: plansLoading, error: plansError } = useReadingPlans()
-  const { data: userPlans, isLoading: userPlansLoading } = useUserPlans()
+  const { data: userPlans, isLoading: userPlansLoading, error: userPlansError } = useUserPlans()
 
   const isLoading = plansLoading || userPlansLoading
+  const error = plansError || userPlansError
 
   if (isLoading) {
     return (
@@ -16,12 +17,18 @@ export function Plans() {
     )
   }
 
-  if (plansError) {
+  if (error) {
     return (
       <Card>
         <CardContent className="text-center py-8">
-          <p className="font-pixel text-[0.625rem] text-danger">ERROR: Failed to load reading plans</p>
-          <p className="font-pixel text-[0.5rem] text-ink-muted mt-2">{plansError.message}</p>
+          <p className="font-pixel text-[0.625rem] text-danger">ERROR: Failed to load data</p>
+          <p className="font-pixel text-[0.5rem] text-ink-muted mt-2">{error.message}</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="mt-4 font-pixel text-[0.625rem] text-sage hover:text-sage-dark underline"
+          >
+            Refresh Page
+          </button>
         </CardContent>
       </Card>
     )

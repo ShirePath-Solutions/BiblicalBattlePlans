@@ -8,11 +8,12 @@ import { Card, CardContent, Button, StreakBadge, LoadingSpinner, ProgressBar } f
 
 export function Dashboard() {
   const { profile, user } = useAuth()
-  const { data: userPlans, isLoading: plansLoading } = useUserPlans()
-  const { data: stats, isLoading: statsLoading } = useStats()
+  const { data: userPlans, isLoading: plansLoading, error: plansError } = useUserPlans()
+  const { data: stats, isLoading: statsLoading, error: statsError } = useStats()
   const { data: dailyVerse, isLoading: verseLoading } = useVerseOfDay()
 
   const isLoading = plansLoading || statsLoading
+  const error = plansError || statsError
   const displayName = profile?.display_name || profile?.username || user?.email?.split('@')[0] || 'Hero'
 
   // Get active campaigns (not completed AND not archived)
@@ -24,6 +25,23 @@ export function Dashboard() {
     current_streak: 0,
     plans_active: 0,
     plans_completed: 0,
+  }
+
+  if (error) {
+    return (
+      <Card>
+        <CardContent className="text-center py-8">
+          <p className="font-pixel text-[0.625rem] text-danger">ERROR: Failed to load data</p>
+          <p className="font-pixel text-[0.5rem] text-ink-muted mt-2">{error.message}</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="mt-4 font-pixel text-[0.625rem] text-sage hover:text-sage-dark underline"
+          >
+            Refresh Page
+          </button>
+        </CardContent>
+      </Card>
+    )
   }
 
   return (
