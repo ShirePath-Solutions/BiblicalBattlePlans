@@ -121,6 +121,13 @@ export function ActivePlan() {
   const handleToggleSection = async (section: typeof todaysReading[0]) => {
     if (!id || !userPlan) return
 
+    // Check if this will complete all readings for the day
+    const isMarkingComplete = !section.isCompleted
+    const otherSectionsComplete = todaysReading
+      .filter(s => s.id !== section.id)
+      .every(s => s.isCompleted)
+    const willCompleteDay = isMarkingComplete && otherSectionsComplete
+
     if (isCyclingPlan) {
       // For cycling plans, use the chapter-based marking
       await markChapterRead.mutateAsync({
@@ -138,6 +145,11 @@ export function ActivePlan() {
         totalSections: todaysReading.length,
         existingProgress: progress || null,
       })
+    }
+
+    // Show toast when all readings for the day are completed
+    if (willCompleteDay) {
+      toast.success("Today's reading complete!")
     }
   }
 
@@ -169,6 +181,8 @@ export function ActivePlan() {
       notes,
       userPlan,
     })
+
+    toast.success(`Logged ${chapters} chapter${chapters !== 1 ? 's' : ''}!`)
   }
 
   return (
@@ -179,7 +193,7 @@ export function ActivePlan() {
         className="inline-flex items-center gap-1 font-pixel text-[0.625rem] text-ink-muted hover:text-sage transition-colors"
       >
         <ChevronLeft className="w-4 h-4" />
-        BACK TO DASHBOARD
+        BACK TO HOME
       </Link>
 
       {/* Campaign Header */}
@@ -230,19 +244,19 @@ export function ActivePlan() {
       <Card noPadding>
         <div className="bg-gradient-to-r from-parchment-dark/40 to-transparent px-4 py-3 border-b border-border-subtle">
           <div className="flex items-center justify-between">
-            <h2 className="font-pixel text-[0.625rem] text-ink">
+            <h2 className="font-pixel text-[0.75rem] text-ink">
               TODAY'S PROGRESS
             </h2>
             <div className="flex items-center gap-2">
               <BookOpen className="w-4 h-4 text-ink-muted" />
-              <span className="font-pixel text-[0.5rem] text-ink">
+              <span className="font-pixel text-[0.625rem] text-ink">
                 {chaptersReadToday} chapter{chaptersReadToday !== 1 ? 's' : ''} read
               </span>
             </div>
           </div>
         </div>
         <div className="p-4">
-          <div className="flex items-center justify-between font-pixel text-[0.5rem] text-ink-muted mb-2">
+          <div className="flex items-center justify-between font-pixel text-[0.625rem] text-ink-muted mb-2">
             <span>Daily goal: {streakMinimum} chapters</span>
             <span>{streakProgress}/{streakMinimum}</span>
           </div>
@@ -343,7 +357,7 @@ export function ActivePlan() {
       {/* Campaign Stats */}
       <Card noPadding>
         <div className="bg-gradient-to-r from-parchment-dark/40 to-transparent px-4 py-3 border-b border-border-subtle">
-          <h2 className="font-pixel text-[0.625rem] text-ink">
+          <h2 className="font-pixel text-[0.75rem] text-ink">
             QUEST STATS
           </h2>
         </div>
@@ -355,13 +369,13 @@ export function ActivePlan() {
                 <div className="font-pixel text-xl text-ink">
                   {chaptersReadToday}
                 </div>
-                <div className="font-pixel text-[0.5rem] text-ink-muted mt-1">Chapters Today</div>
+                <div className="font-pixel text-[0.625rem] text-ink-muted mt-1">Chapters Today</div>
               </div>
               <div className="text-center p-4 bg-parchment-light border border-border-subtle">
                 <div className="font-pixel text-xl text-ink">
                   {userPlan.list_positions?.['free'] || 0}
                 </div>
-                <div className="font-pixel text-[0.5rem] text-ink-muted mt-1">Total Logged</div>
+                <div className="font-pixel text-[0.625rem] text-ink-muted mt-1">Total Logged</div>
               </div>
             </div>
           ) : (
@@ -372,16 +386,16 @@ export function ActivePlan() {
                   <div className="font-pixel text-xl text-ink">
                     {daysOnPlan}
                   </div>
-                  <div className="font-pixel text-[0.5rem] text-ink-muted mt-1">Days on Quest</div>
+                  <div className="font-pixel text-[0.625rem] text-ink-muted mt-1">Days on Quest</div>
                 </div>
               )}
-              
+
               {/* Readings/Chapters Today */}
               <div className="text-center p-4 bg-parchment-light border border-border-subtle">
                 <div className="font-pixel text-xl text-ink">
                   {chaptersReadToday}
                 </div>
-                <div className="font-pixel text-[0.5rem] text-ink-muted mt-1">
+                <div className="font-pixel text-[0.625rem] text-ink-muted mt-1">
                   {isCyclingPlan ? 'Chapters Today' : 'Readings Today'}
                 </div>
               </div>
@@ -391,7 +405,7 @@ export function ActivePlan() {
                 <div className="font-pixel text-xl text-ink">
                   {overallProgress}%
                 </div>
-                <div className="font-pixel text-[0.5rem] text-ink-muted mt-1">Overall Progress</div>
+                <div className="font-pixel text-[0.625rem] text-ink-muted mt-1">Overall Progress</div>
               </div>
 
               {isCyclingPlan ? (
@@ -400,13 +414,13 @@ export function ActivePlan() {
                     <div className="font-pixel text-xl text-ink">
                       {todaysReading.filter(s => s.isCompleted).length}
                     </div>
-                    <div className="font-pixel text-[0.5rem] text-ink-muted mt-1">Lists Done</div>
+                    <div className="font-pixel text-[0.625rem] text-ink-muted mt-1">Lists Done</div>
                   </div>
                   <div className="text-center p-4 bg-parchment-light border border-border-subtle">
                     <div className="font-pixel text-xl text-ink">
                       {todaysReading.length - todaysReading.filter(s => s.isCompleted).length}
                     </div>
-                    <div className="font-pixel text-[0.5rem] text-ink-muted mt-1">Remaining</div>
+                    <div className="font-pixel text-[0.625rem] text-ink-muted mt-1">Remaining</div>
                   </div>
                 </>
               ) : isWeeklyPlan && weeklyInfo ? (
@@ -419,7 +433,7 @@ export function ActivePlan() {
                       D{weeklyInfo.dayInWeek}
                     </span>
                   </div>
-                  <div className="font-pixel text-[0.5rem] text-ink-muted mt-1">Reading Position</div>
+                  <div className="font-pixel text-[0.625rem] text-ink-muted mt-1">Reading Position</div>
                 </div>
               ) : (
                 <div className="text-center p-4 bg-parchment-light border border-border-subtle">
@@ -433,7 +447,7 @@ export function ActivePlan() {
                       </span>
                     )}
                   </div>
-                  <div className="font-pixel text-[0.5rem] text-ink-muted mt-1">Reading Position</div>
+                  <div className="font-pixel text-[0.625rem] text-ink-muted mt-1">Reading Position</div>
                 </div>
               )}
             </div>
@@ -495,26 +509,26 @@ export function ActivePlan() {
       {isFreeReading && (
         <Card noPadding>
           <div className="bg-gradient-to-r from-parchment-dark/40 to-transparent px-4 py-3 border-b border-border-subtle">
-            <h2 className="font-pixel text-[0.625rem] text-ink">
+            <h2 className="font-pixel text-[0.75rem] text-ink">
               HOW IT WORKS
             </h2>
           </div>
           <div className="p-4 space-y-3">
             <div className="flex items-start gap-3">
               <ChevronRight className="w-4 h-4 text-sage flex-shrink-0 mt-0.5" />
-              <p className="font-pixel text-[0.5rem] text-ink-muted leading-relaxed">Log chapters as you read them. There's no predetermined schedule - read what you want, when you want.</p>
+              <p className="font-pixel text-[0.625rem] text-ink-muted leading-relaxed">Log chapters as you read them. There's no predetermined schedule - read what you want, when you want.</p>
             </div>
             <div className="flex items-start gap-3">
               <ChevronRight className="w-4 h-4 text-sage flex-shrink-0 mt-0.5" />
-              <p className="font-pixel text-[0.5rem] text-ink-muted leading-relaxed">Your entries count toward your daily goal of {streakMinimum} chapters to maintain your streak.</p>
+              <p className="font-pixel text-[0.625rem] text-ink-muted leading-relaxed">Your entries count toward your daily goal of {streakMinimum} chapters to maintain your streak.</p>
             </div>
             <div className="flex items-start gap-3">
               <ChevronRight className="w-4 h-4 text-sage flex-shrink-0 mt-0.5" />
-              <p className="font-pixel text-[0.5rem] text-ink-muted leading-relaxed">Use the notes field to track what you read (e.g., "Psalms 23-25, Romans 8").</p>
+              <p className="font-pixel text-[0.625rem] text-ink-muted leading-relaxed">Use the notes field to track what you read (e.g., "Psalms 23-25, Romans 8").</p>
             </div>
             <div className="flex items-start gap-3">
               <ChevronRight className="w-4 h-4 text-sage flex-shrink-0 mt-0.5" />
-              <p className="font-pixel text-[0.5rem] text-ink-muted leading-relaxed">Entries are for today only - you cannot backdate reading to maintain streak integrity.</p>
+              <p className="font-pixel text-[0.625rem] text-ink-muted leading-relaxed">Entries are for today only - you cannot backdate reading to maintain streak integrity.</p>
             </div>
           </div>
         </Card>
@@ -525,8 +539,8 @@ export function ActivePlan() {
         <CardContent>
           <div className="flex items-center justify-between">
             <div className="flex-1">
-              <h3 className="font-pixel text-[0.625rem] text-ink">Archive Quest</h3>
-              <p className="font-pixel text-[0.5rem] text-ink-muted mt-1">
+              <h3 className="font-pixel text-[0.75rem] text-ink">Archive Quest</h3>
+              <p className="font-pixel text-[0.625rem] text-ink-muted mt-1">
                 Hide from Today's Quests while preserving all progress
               </p>
             </div>

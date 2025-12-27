@@ -3,31 +3,17 @@ import { BookOpen, Swords, Trophy, Plus, Book } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
 import { useUserPlans, getCurrentReadings, getTodaysReading, calculatePlanProgress } from '../hooks/usePlans'
 import { useStats } from '../hooks/useStats'
+import { useVerseOfDay } from '../hooks/useVerseOfDay'
 import { Card, CardContent, Button, StreakBadge, LoadingSpinner, ProgressBar } from '../components/ui'
-
-// Daily verses for inspiration
-const DAILY_VERSES = [
-  { text: '"For I know the plans I have for you," declares the LORD, "plans to prosper you and not to harm you, plans to give you hope and a future."', reference: 'Jeremiah 29:11' },
-  { text: '"Your word is a lamp for my feet, a light on my path."', reference: 'Psalm 119:105' },
-  { text: '"All Scripture is God-breathed and is useful for teaching, rebuking, correcting and training in righteousness."', reference: '2 Timothy 3:16' },
-  { text: '"Do not let this Book of the Law depart from your mouth; meditate on it day and night."', reference: 'Joshua 1:8' },
-  { text: '"The grass withers and the flowers fall, but the word of our God endures forever."', reference: 'Isaiah 40:8' },
-]
-
-function getDailyVerse() {
-  const today = new Date()
-  const dayOfYear = Math.floor((today.getTime() - new Date(today.getFullYear(), 0, 0).getTime()) / (1000 * 60 * 60 * 24))
-  return DAILY_VERSES[dayOfYear % DAILY_VERSES.length]
-}
 
 export function Dashboard() {
   const { profile, user } = useAuth()
   const { data: userPlans, isLoading: plansLoading } = useUserPlans()
   const { data: stats, isLoading: statsLoading } = useStats()
+  const { data: dailyVerse, isLoading: verseLoading } = useVerseOfDay()
 
   const isLoading = plansLoading || statsLoading
   const displayName = profile?.display_name || profile?.username || user?.email?.split('@')[0] || 'Hero'
-  const dailyVerse = getDailyVerse()
 
   // Get active campaigns (not completed AND not archived)
   const activeCampaigns = userPlans?.filter((up) => !up.is_completed && !up.is_archived) || []
@@ -109,12 +95,20 @@ export function Dashboard() {
           </div>
         </div>
         <div className="p-6 text-center">
-          <p className="font-pixel text-[0.75rem] text-ink leading-loose mb-4">
-            {dailyVerse.text}
-          </p>
-          <p className="font-pixel text-[0.625rem] text-ink-muted">
-            — {dailyVerse.reference}
-          </p>
+          {verseLoading ? (
+            <div className="flex justify-center py-4">
+              <LoadingSpinner />
+            </div>
+          ) : dailyVerse ? (
+            <>
+              <p className="font-pixel text-[0.75rem] text-ink leading-loose mb-4">
+                {dailyVerse.text}
+              </p>
+              <p className="font-pixel text-[0.625rem] text-ink-muted">
+                — {dailyVerse.reference}
+              </p>
+            </>
+          ) : null}
         </div>
       </div>
 

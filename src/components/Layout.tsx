@@ -112,9 +112,26 @@ export function Layout() {
       </header>
 
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 pb-24 md:pb-6">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         <Outlet />
       </main>
+
+      {/* Footer */}
+      <footer className="border-t border-border-subtle bg-parchment-light pb-24 md:pb-0">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+            <p className="font-pixel text-[0.625rem] text-ink-muted">
+              Created and maintained by ShirePath Solutions
+            </p>
+            <Link
+              to="/acknowledgements"
+              className="font-pixel text-[0.625rem] text-sage hover:text-sage-dark transition-colors"
+            >
+              Acknowledgements
+            </Link>
+          </div>
+        </div>
+      </footer>
 
       {/* Mobile Navigation */}
       <MobileNavigation />

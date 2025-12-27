@@ -37,12 +37,12 @@ export function FreeReadingInput({
     <Card noPadding>
       <div className="bg-gradient-to-r from-parchment-dark/40 to-transparent px-4 py-3 border-b border-border-subtle">
         <div className="flex items-center justify-between">
-          <h3 className="font-pixel text-[0.625rem] text-ink">
+          <h3 className="font-pixel text-[0.75rem] text-ink">
             LOG READING
           </h3>
           <div className="flex items-center gap-2">
             <BookOpen className="w-4 h-4 text-ink-muted" />
-            <span className="font-pixel text-[0.5rem] text-ink">
+            <span className="font-pixel text-[0.625rem] text-ink">
               {chaptersReadToday} today
             </span>
           </div>
@@ -63,7 +63,7 @@ export function FreeReadingInput({
           />
 
           <div className="w-full">
-            <label className="block mb-1.5 font-pixel text-[0.625rem] text-ink-muted uppercase tracking-wide">
+            <label className="block mb-1.5 font-pixel text-[0.75rem] text-ink-muted uppercase tracking-wide">
               Notes (optional)
             </label>
             <textarea
@@ -101,7 +101,7 @@ export function FreeReadingInput({
           <span>LOG CHAPTERS</span>
         </Button>
 
-        <p className="font-pixel text-[0.5rem] text-ink-muted text-center">
+        <p className="font-pixel text-[0.625rem] text-ink-muted text-center">
           Press Enter to submit
         </p>
       </div>
