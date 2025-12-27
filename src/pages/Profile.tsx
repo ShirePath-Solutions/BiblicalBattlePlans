@@ -35,7 +35,7 @@ function getRankProgress(streak: number) {
 }
 
 export function Profile() {
-  const { profile, signOut, updateProfile } = useAuth()
+  const { profile, updateProfile } = useAuth()
   const { data: stats, isLoading: statsLoading } = useStats()
   const [isEditing, setIsEditing] = useState(false)
   const [displayName, setDisplayName] = useState(profile?.display_name || '')
@@ -55,10 +55,6 @@ export function Profile() {
     }
     setIsSaving(false)
     setIsEditing(false)
-  }
-
-  const handleSignOut = async () => {
-    await signOut()
   }
 
   if (statsLoading) {
@@ -147,14 +143,9 @@ export function Profile() {
           </CardFooter>
         </Card>
       ) : (
-        <div className="flex gap-3">
-          <Button variant="secondary" onClick={() => setIsEditing(true)}>
-            EDIT PROFILE
-          </Button>
-          <Button variant="danger" onClick={handleSignOut}>
-            SIGN OUT
-          </Button>
-        </div>
+        <Button variant="secondary" onClick={() => setIsEditing(true)}>
+          EDIT PROFILE
+        </Button>
       )}
 
       {/* Stats */}
