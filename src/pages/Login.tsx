@@ -25,18 +25,29 @@ export function Login() {
     setIsLoading(true)
     setError(null)
 
-    const { error } = await signIn(data.email, data.password!)
+    try {
+      const { error } = await signIn(data.email, data.password!)
 
-    if (error) {
-      // Provide helpful error messages
-      let errorMessage = error.message
+      if (error) {
+        // Provide helpful error messages
+        let errorMessage = error.message
 
-      if (error.message.includes('Invalid login credentials')) {
-        errorMessage = 'Invalid email or password. Please check your credentials and try again.'
-      } else if (error.message.includes('Email not confirmed') || error.message.includes('400')) {
-        errorMessage = 'Email not confirmed. Please check your inbox and click the confirmation link before logging in.'
+        if (error.message.includes('Invalid login credentials')) {
+          errorMessage = 'Invalid email or password. Please check your credentials and try again.'
+        } else if (error.message.includes('Email not confirmed')) {
+          errorMessage = 'Email not confirmed. Please check your inbox and click the confirmation link before logging in.'
+        } else if (error.message.includes('Email not verified')) {
+          errorMessage = 'Email not verified. Please check your inbox and click the verification link before logging in.'
+        } else if (error.status === 400 || error.message.includes('400')) {
+          errorMessage = 'Unable to sign in. This may be because your email is not confirmed yet. Please check your inbox for a confirmation link.'
+        }
+
+        setError(errorMessage)
+        setIsLoading(false)
       }
-
+    } catch (err) {
+      // Catch any unexpected errors
+      const errorMessage = err instanceof Error ? err.message : 'An unexpected error occurred. Please try again.'
       setError(errorMessage)
       setIsLoading(false)
     }

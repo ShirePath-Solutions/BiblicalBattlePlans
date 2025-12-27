@@ -14,11 +14,9 @@ export function Profile() {
 
   const handleSave = async () => {
     setIsSaving(true)
-    // Update both display_name and username to keep them in sync
-    // Username is kept for backwards compatibility but hidden from users
+    // Only update display_name, username stays fixed after signup
     await updateProfile({
       display_name: displayName,
-      username: displayName.toLowerCase().replace(/[^a-z0-9_]/g, '_'),
       streak_minimum: streakMinimum
     })
     setIsSaving(false)
@@ -65,12 +63,19 @@ export function Profile() {
             </h2>
           </CardHeader>
           <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <div className="text-sm text-terminal-gray-400">
+                <span className="text-terminal-gray-500">Username:</span>{' '}
+                <span className="text-terminal-green">@{profile?.username}</span>
+                <span className="text-terminal-gray-600 ml-2">(set at enlistment)</span>
+              </div>
+            </div>
             <Input
-              label="Soldier Name"
+              label="Display Name"
               value={displayName}
               onChange={(e) => setDisplayName(e.target.value)}
-              placeholder="Your soldier name"
-              hint="This is how you'll be identified in the ranks"
+              placeholder="Your display name"
+              hint="This is how your name appears to other soldiers"
             />
             <Input
               label="Streak Minimum (Chapters/Day)"

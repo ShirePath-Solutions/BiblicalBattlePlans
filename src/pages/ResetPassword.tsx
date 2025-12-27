@@ -21,7 +21,16 @@ export function ResetPassword() {
     const { error } = await updatePassword(data.password)
 
     if (error) {
-      setError(error.message)
+      // Provide helpful error messages
+      let errorMessage = error.message
+
+      if (error.message.includes('Auth session missing') || error.message.includes('session')) {
+        errorMessage = 'Your password reset link has expired or is invalid. Please request a new password reset link from the login page.'
+      } else if (error.message.includes('same password')) {
+        errorMessage = 'New password must be different from your current password.'
+      }
+
+      setError(errorMessage)
       setIsLoading(false)
     } else {
       setSuccess(true)

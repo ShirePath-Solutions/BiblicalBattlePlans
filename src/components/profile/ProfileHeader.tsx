@@ -8,7 +8,9 @@ interface ProfileHeaderProps {
 export function ProfileHeader({ currentStreak }: ProfileHeaderProps) {
   const { profile, user } = useAuth()
 
+  // Display name is the friendly name, falls back to username if not set
   const displayName = profile?.display_name || profile?.username || 'Soldier'
+  // Username is the unique identifier (handle)
   const username = profile?.username || user?.email?.split('@')[0] || 'anonymous'
   const joinDate = profile?.created_at
     ? new Date(profile.created_at).toLocaleDateString('en-US', {
