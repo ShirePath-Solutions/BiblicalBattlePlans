@@ -1,27 +1,10 @@
 import { useEffect } from 'react'
-import { BrowserRouter, Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { useAuth } from './hooks/useAuth'
 import { ProtectedRoute } from './components/auth'
 import { Layout } from './components/Layout'
 import { Login, Signup, ForgotPassword, ResetPassword, Dashboard, Plans, PlanDetail, ActivePlan, Profile } from './pages'
 import { LoadingOverlay } from './components/ui'
-
-// Component to handle password recovery redirects
-function RecoveryHandler() {
-  const navigate = useNavigate()
-  const location = useLocation()
-
-  useEffect(() => {
-    // Check if URL contains recovery token in hash
-    const hash = location.hash
-    if (hash && hash.includes('type=recovery')) {
-      // Redirect to reset password page, preserving the hash
-      navigate('/reset-password' + hash, { replace: true })
-    }
-  }, [location, navigate])
-
-  return null
-}
 
 function App() {
   const { initialize, isInitialized, isLoading } = useAuth()
@@ -37,7 +20,6 @@ function App() {
 
   return (
     <BrowserRouter>
-      <RecoveryHandler />
       <Routes>
         {/* Public routes */}
         <Route path="/login" element={<Login />} />

@@ -7,7 +7,7 @@ interface ProtectedRouteProps {
 }
 
 export function ProtectedRoute({ children }: ProtectedRouteProps) {
-  const { user, isLoading, isInitialized } = useAuth()
+  const { user, isLoading, isInitialized, isRecoveryMode } = useAuth()
   const location = useLocation()
 
   // Show loading while checking auth status
@@ -15,6 +15,11 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
     return (
       <LoadingOverlay message="AUTHENTICATING..." />
     )
+  }
+
+  // If in recovery mode, redirect to reset password page
+  if (isRecoveryMode) {
+    return <Navigate to="/reset-password" replace />
   }
 
   // Redirect to login if not authenticated

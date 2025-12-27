@@ -9,6 +9,7 @@ interface AuthState {
   session: Session | null
   isLoading: boolean
   isInitialized: boolean
+  isRecoveryMode: boolean
 }
 
 interface AuthActions {
@@ -46,6 +47,7 @@ export const useAuth = create<AuthStore>((set, get) => ({
   session: null,
   isLoading: true,
   isInitialized: false,
+  isRecoveryMode: false,
 
   initialize: async () => {
     try {
@@ -73,13 +75,24 @@ export const useAuth = create<AuthStore>((set, get) => ({
 
       // Listen for auth changes
       supabase.auth.onAuthStateChange(async (event, session) => {
-        if (event === 'SIGNED_IN' && session?.user) {
+        console.log('Auth event:', event, 'Session:', !!session)
+
+        if (event === 'PASSWORD_RECOVERY' && session?.user) {
+          // User clicked a password reset link - set recovery mode
+          console.log('Password recovery mode activated')
+          set({
+            user: session.user,
+            session,
+            isLoading: false,
+            isRecoveryMode: true,
+          })
+        } else if (event === 'SIGNED_IN' && session?.user) {
           // Sync username from user metadata to profile if not set
           const metadata = session.user.user_metadata
           if (metadata?.username) {
             // First check if profile already has data
             const existingProfile = await fetchProfile(session.user.id)
-            
+
             // Only update if username is not set, and preserve display_name if it exists
             if (!existingProfile?.username) {
               await (supabase
@@ -98,6 +111,7 @@ export const useAuth = create<AuthStore>((set, get) => ({
             session,
             profile,
             isLoading: false,
+            isRecoveryMode: false,
           })
         } else if (event === 'SIGNED_OUT') {
           set({
@@ -105,9 +119,14 @@ export const useAuth = create<AuthStore>((set, get) => ({
             session: null,
             profile: null,
             isLoading: false,
+            isRecoveryMode: false,
           })
         } else if (event === 'TOKEN_REFRESHED' && session) {
           set({ session })
+        } else if (event === 'USER_UPDATED') {
+          // Password was successfully changed, exit recovery mode
+          console.log('User updated, exiting recovery mode')
+          set({ isRecoveryMode: false })
         }
       })
     } catch (error) {
@@ -260,3 +279,4 @@ export const useUser = () => useAuth((state) => state.user)
 export const useProfile = () => useAuth((state) => state.profile)
 export const useIsAuthenticated = () => useAuth((state) => !!state.user)
 export const useIsLoading = () => useAuth((state) => state.isLoading)
+export const useIsRecoveryMode = () => useAuth((state) => state.isRecoveryMode)

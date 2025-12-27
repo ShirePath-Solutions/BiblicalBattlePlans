@@ -7,7 +7,7 @@ import { Card, CardHeader, CardContent, CardFooter } from '../components/ui'
 
 export function ResetPassword() {
   const navigate = useNavigate()
-  const { updatePassword } = useAuth()
+  const { updatePassword, isRecoveryMode } = useAuth()
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
@@ -40,6 +40,41 @@ export function ResetPassword() {
         navigate('/login')
       }, 2000)
     }
+  }
+
+  // Show error if not in recovery mode (user navigated directly without reset link)
+  if (!isRecoveryMode && !success) {
+    return (
+      <div className="min-h-screen bg-terminal-dark flex items-center justify-center p-4">
+        <div className="w-full max-w-md">
+          <Card>
+            <CardHeader>
+              <h1 className="text-xl font-pixel text-terminal-green text-center">
+                INVALID SESSION
+              </h1>
+            </CardHeader>
+
+            <CardContent className="text-center space-y-4">
+              <p className="text-terminal-gray-200">
+                No valid password reset session found.
+              </p>
+              <p className="text-terminal-gray-400 text-sm">
+                Please request a new password reset link from the login page.
+              </p>
+            </CardContent>
+
+            <CardFooter className="text-center">
+              <Link
+                to="/forgot-password"
+                className="text-terminal-green hover:underline"
+              >
+                {'> Request Password Reset'}
+              </Link>
+            </CardFooter>
+          </Card>
+        </div>
+      </div>
+    )
   }
 
   if (success) {

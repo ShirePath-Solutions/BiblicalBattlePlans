@@ -28,25 +28,31 @@ export function Login() {
     try {
       const { error } = await signIn(data.email, data.password!)
 
-      if (error) {
-        // Provide helpful error messages
-        let errorMessage = error.message
+      // Always stop loading after sign in attempt
+      setIsLoading(false)
 
-        if (error.message.includes('Invalid login credentials')) {
+      if (error) {
+        console.error('Login error:', error)
+
+        // Provide helpful error messages
+        let errorMessage = error.message || 'An error occurred during login'
+
+        if (error.message?.includes('Invalid login credentials')) {
           errorMessage = 'Invalid email or password. Please check your credentials and try again.'
-        } else if (error.message.includes('Email not confirmed')) {
+        } else if (error.message?.includes('Email not confirmed')) {
           errorMessage = 'Email not confirmed. Please check your inbox and click the confirmation link before logging in.'
-        } else if (error.message.includes('Email not verified')) {
+        } else if (error.message?.includes('Email not verified')) {
           errorMessage = 'Email not verified. Please check your inbox and click the verification link before logging in.'
-        } else if ('status' in error && error.status === 400 || error.message.includes('400')) {
+        } else if (('status' in error && error.status === 400) || error.message?.includes('400')) {
           errorMessage = 'Unable to sign in. This may be because your email is not confirmed yet. Please check your inbox for a confirmation link.'
         }
 
+        console.log('Setting error message:', errorMessage)
         setError(errorMessage)
-        setIsLoading(false)
       }
     } catch (err) {
       // Catch any unexpected errors
+      console.error('Unexpected error:', err)
       const errorMessage = err instanceof Error ? err.message : 'An unexpected error occurred. Please try again.'
       setError(errorMessage)
       setIsLoading(false)
