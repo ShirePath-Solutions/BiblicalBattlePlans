@@ -255,6 +255,7 @@ export function useMarkChapterRead() {
       queryClient.invalidateQueries({ queryKey: planKeys.userPlan(variables.userPlanId) })
       if (user) {
         queryClient.invalidateQueries({ queryKey: planKeys.userPlans(user.id) })
+        queryClient.invalidateQueries({ queryKey: ['stats', user.id] })
       }
     },
   })
@@ -307,6 +308,7 @@ export function useAdvanceList() {
       queryClient.invalidateQueries({ queryKey: planKeys.userPlan(variables.userPlanId) })
       if (user) {
         queryClient.invalidateQueries({ queryKey: planKeys.userPlans(user.id) })
+        queryClient.invalidateQueries({ queryKey: ['stats', user.id] })
       }
     },
   })
@@ -343,6 +345,7 @@ export function useAdvanceDay() {
       queryClient.invalidateQueries({ queryKey: planKeys.userPlan(variables.userPlanId) })
       if (user) {
         queryClient.invalidateQueries({ queryKey: planKeys.userPlans(user.id) })
+        queryClient.invalidateQueries({ queryKey: ['stats', user.id] })
       }
     },
   })
@@ -499,6 +502,11 @@ export function useMarkSectionComplete() {
       queryClient.invalidateQueries({
         queryKey: planKeys.dailyProgress(variables.userPlanId, today),
       })
+
+      // Always invalidate stats when sections are marked (affects chapter count and streak)
+      if (user) {
+        queryClient.invalidateQueries({ queryKey: ['stats', user.id] })
+      }
 
       if (data.is_complete && user) {
         queryClient.invalidateQueries({ queryKey: planKeys.userPlan(variables.userPlanId) })

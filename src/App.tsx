@@ -8,14 +8,14 @@ import { Login, Signup, ForgotPassword, ResetPassword, Dashboard, Plans, PlanDet
 import { LoadingOverlay } from './components/ui'
 
 function App() {
-  const { initialize, isInitialized, isLoading } = useAuth()
+  const { initialize, isInitialized } = useAuth()
 
   useEffect(() => {
     initialize()
   }, [initialize])
 
-  // Show loading while initializing auth
-  if (!isInitialized || isLoading) {
+  // Show loading only while initializing auth (not during sign in/out operations)
+  if (!isInitialized) {
     return <LoadingOverlay message="INITIALIZING..." />
   }
 

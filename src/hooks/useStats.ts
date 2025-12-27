@@ -127,6 +127,12 @@ interface UserPlanWithPlan {
   }
 }
 
+// Parse a date string (YYYY-MM-DD) as local date to avoid timezone issues
+function parseLocalDate(dateStr: string): Date {
+  const [year, month, day] = dateStr.split('-').map(Number)
+  return new Date(year, month - 1, day)
+}
+
 function calculateStreaks(
   progress: DailyProgressRecord[],
   streakMinimum: number = 3,
@@ -147,20 +153,20 @@ function calculateStreaks(
     progress
       .filter((p) => countChapters(p) >= streakMinimum)
       .map((p) => p.date)
-  )].sort((a, b) => new Date(b).getTime() - new Date(a).getTime())
+  )].sort((a, b) => parseLocalDate(b).getTime() - parseLocalDate(a).getTime())
 
   if (completedDates.length === 0) {
     return { currentStreak: 0, longestStreak: 0 }
   }
 
   // Check if streak is current (today or yesterday)
+  // If most recent completion was yesterday, streak is still active (user has today to complete)
   const today = new Date()
   today.setHours(0, 0, 0, 0)
   const yesterday = new Date(today)
   yesterday.setDate(yesterday.getDate() - 1)
 
-  const mostRecentDate = new Date(completedDates[0])
-  mostRecentDate.setHours(0, 0, 0, 0)
+  const mostRecentDate = parseLocalDate(completedDates[0])
 
   const isCurrentStreak =
     mostRecentDate.getTime() === today.getTime() ||
@@ -175,8 +181,8 @@ function calculateStreaks(
     if (i === 0) {
       streakCount = 1
     } else {
-      const currentDate = new Date(completedDates[i])
-      const prevDate = new Date(completedDates[i - 1])
+      const currentDate = parseLocalDate(completedDates[i])
+      const prevDate = parseLocalDate(completedDates[i - 1])
       const diffDays = Math.round(
         (prevDate.getTime() - currentDate.getTime()) / (1000 * 60 * 60 * 24)
       )
