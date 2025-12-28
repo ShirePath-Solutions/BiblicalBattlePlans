@@ -92,17 +92,24 @@ html {
   image-rendering: pixelated;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  height: 100%;
+  overflow: hidden;
 }
 
 body {
   margin: 0;
-  min-height: 100vh;
+  min-height: 100%;
+  height: 100%;
   line-height: 1.8;
   background: linear-gradient(135deg, var(--color-parchment-dark) 0%, #c8a878 100%);
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior-y: contain;
+  -webkit-overflow-scrolling: touch;
 }
 
 #root {
-  min-height: 100vh;
+  min-height: 100%;
 }
 
 /* ============================================

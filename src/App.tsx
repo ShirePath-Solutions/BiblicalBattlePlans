@@ -13,34 +13,13 @@ function ScrollToTop() {
   const { pathname } = useLocation()
 
   useEffect(() => {
-    // Disable browser's scroll restoration
     if ('scrollRestoration' in window.history) {
       window.history.scrollRestoration = 'manual'
     }
   }, [])
 
   useEffect(() => {
-    // Force scroll to top - works on iOS Safari after keyboard closes
-    const scrollToTop = () => {
-      // Standard scroll methods
-      window.scrollTo({ top: 0, left: 0, behavior: 'instant' })
-      document.documentElement.scrollTop = 0
-      document.body.scrollTop = 0
-
-      // Also scroll the root element if it has overflow
-      const root = document.getElementById('root')
-      if (root) root.scrollTop = 0
-    }
-
-    // Immediate scroll
-    scrollToTop()
-
-    // iOS keyboard takes ~300ms to close, so we need delayed attempts
-    const timers = [50, 150, 300].map(delay =>
-      setTimeout(() => requestAnimationFrame(scrollToTop), delay)
-    )
-
-    return () => timers.forEach(clearTimeout)
+    window.scrollTo(0, 0)
   }, [pathname])
 
   return null

@@ -109,19 +109,19 @@ export function AuthForm({ mode, onSubmit, isLoading = false, error }: AuthFormP
       {mode !== 'reset-password' && (
         <Input
           label="Email"
-          name={mode === 'login' ? 'username' : 'email'}
+          name="email"
           id="email"
           type="email"
           inputMode="email"
           autoCapitalize="off"
           autoCorrect="off"
           spellCheck={false}
-          enterKeyHint={mode === 'login' ? 'next' : 'done'}
+          enterKeyHint="next"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           placeholder="Enter your email"
           disabled={isLoading}
-          autoComplete={mode === 'login' ? 'username' : 'email'}
+          autoComplete="email"
         />
       )}
 

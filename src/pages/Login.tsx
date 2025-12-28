@@ -72,8 +72,8 @@ export function Login() {
 
   if (emailNotConfirmed) {
     return (
-      <div className="min-h-screen bg-parchment-dark flex items-center justify-center p-4">
-        <div className="w-full max-w-md">
+      <div className="fixed inset-0 bg-parchment-dark flex items-center justify-center p-4 overflow-y-auto">
+        <div className="w-full max-w-md my-auto">
           <Card variant="elevated">
             <CardHeader>
               <h1 className="font-pixel text-sm text-ink text-center">
@@ -125,8 +125,8 @@ export function Login() {
   }
 
   return (
-    <div className="min-h-screen bg-parchment-dark flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
+    <div className="fixed inset-0 bg-parchment-dark flex items-center justify-center p-4 overflow-y-auto">
+      <div className="w-full max-w-md my-auto">
         {/* Logo - links back to landing page */}
         <Link to="/" className="flex flex-col items-center mb-8 group">
           <div className="w-20 h-20 flex items-center justify-center mb-4 group-hover:scale-105 transition-transform">
