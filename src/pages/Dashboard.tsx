@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom'
 import { BookOpen, Swords, Trophy, Plus, Book, Play } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
-import { useUserPlans, getCurrentReadings, getTodaysReading, calculatePlanProgress } from '../hooks/usePlans'
+import { useUserPlans, useAllTodayProgress, getCurrentReadings, getTodaysReading, calculatePlanProgress } from '../hooks/usePlans'
 import { useStats } from '../hooks/useStats'
 import { useVerseOfDay } from '../hooks/useVerseOfDay'
 import { Card, CardContent, Button, StreakBadge, LoadingSpinner, ProgressBar } from '../components/ui'
@@ -12,6 +12,7 @@ export function Dashboard() {
   const { data: userPlans, isLoading: plansLoading, error: plansError } = useUserPlans()
   const { data: stats, isLoading: statsLoading, error: statsError } = useStats()
   const { data: dailyVerse, isLoading: verseLoading } = useVerseOfDay()
+  const { data: todayProgressMap = {} } = useAllTodayProgress()
 
   const isLoading = plansLoading || statsLoading
   const error = plansError || statsError
@@ -148,9 +149,10 @@ export function Dashboard() {
               {activeCampaigns.map((userPlan) => {
                 const isCyclingPlan = userPlan.plan.daily_structure.type === 'cycling_lists'
                 const isFreeReading = userPlan.plan.daily_structure.type === 'free_reading'
+                const dailyProgress = todayProgressMap[userPlan.id] || null
                 const todaysReading = isCyclingPlan
-                  ? getCurrentReadings(userPlan.plan, userPlan.list_positions || {})
-                  : getTodaysReading(userPlan.plan, userPlan.current_day)
+                  ? getCurrentReadings(userPlan.plan, userPlan.list_positions || {}, dailyProgress)
+                  : getTodaysReading(userPlan.plan, userPlan.current_day, dailyProgress)
                 const progress = calculatePlanProgress(userPlan, userPlan.plan)
                 const totalLogged = userPlan.list_positions?.['free'] || 0
 

@@ -131,6 +131,35 @@ export function useDailyProgress(userPlanId: string, date?: string) {
   })
 }
 
+// Fetch all daily progress records for today (for dashboard display)
+export function useAllTodayProgress() {
+  const { user } = useAuth()
+  const today = getLocalDate()
+
+  return useQuery({
+    queryKey: ['allTodayProgress', user?.id || '', today],
+    queryFn: async () => {
+      if (!user) return {}
+
+      const { data, error } = await supabase
+        .from('daily_progress')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('date', today)
+
+      if (error) throw error
+
+      // Create a map of userPlanId -> DailyProgress
+      const progressMap: Record<string, DailyProgress> = {}
+      for (const progress of (data || []) as DailyProgress[]) {
+        progressMap[progress.user_plan_id] = progress
+      }
+      return progressMap
+    },
+    enabled: !!user,
+  })
+}
+
 // Fetch total chapters read today across ALL plans (for global streak tracking)
 export function useTodaysTotalChapters() {
   const { user } = useAuth()
@@ -309,6 +338,7 @@ export function useMarkChapterRead() {
         queryClient.invalidateQueries({ queryKey: planKeys.userPlans(user.id) })
         queryClient.invalidateQueries({ queryKey: planKeys.todaysTotalProgress(user.id, today) })
         queryClient.invalidateQueries({ queryKey: ['stats', user.id] })
+        queryClient.invalidateQueries({ queryKey: ['allTodayProgress', user.id, today] })
       }
     },
   })
@@ -559,9 +589,10 @@ export function useMarkSectionComplete() {
         queryKey: planKeys.dailyProgress(variables.userPlanId, today),
       })
 
-      // Always invalidate stats when sections are marked (affects chapter count and streak)
+      // Always invalidate stats and allTodayProgress when sections are marked
       if (user) {
         queryClient.invalidateQueries({ queryKey: ['stats', user.id] })
+        queryClient.invalidateQueries({ queryKey: ['allTodayProgress', user.id, today] })
       }
 
       if (data.is_complete && user) {

@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useLayoutEffect } from 'react'
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { SpeedInsights } from '@vercel/speed-insights/react'
 import { Toaster } from 'sonner'
@@ -12,14 +12,16 @@ import { LoadingOverlay } from './components/ui'
 function ScrollToTop() {
   const { pathname } = useLocation()
 
-  useEffect(() => {
+  // Set scroll restoration to manual immediately on mount
+  useLayoutEffect(() => {
     if ('scrollRestoration' in window.history) {
       window.history.scrollRestoration = 'manual'
     }
   }, [])
 
-  useEffect(() => {
-    window.scrollTo(0, 0)
+  // Scroll to top synchronously on route change using useLayoutEffect
+  useLayoutEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' })
   }, [pathname])
 
   return null
