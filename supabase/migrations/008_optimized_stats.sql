@@ -62,8 +62,11 @@ BEGIN
   SELECT COALESCE(streak_minimum, 3) INTO v_streak_minimum
   FROM profiles WHERE id = p_user_id;
 
+  -- Drop temp table if it exists (needed for multiple calls in same transaction)
+  DROP TABLE IF EXISTS temp_daily_chapters;
+
   -- Aggregate chapters by date
-  CREATE TEMP TABLE temp_daily_chapters ON COMMIT DROP AS
+  CREATE TEMP TABLE temp_daily_chapters AS
   SELECT
     dp.date,
     SUM(calculate_chapters_for_progress(dp.completed_sections, dp.user_plan_id)) as chapters

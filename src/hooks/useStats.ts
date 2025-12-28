@@ -9,16 +9,16 @@ export const statsKeys = {
 
 /**
  * Hook to get user stats.
- * Stats are now stored on the profile and updated by database triggers,
- * so this is just a simple read operation.
+ * Stats are now stored on the profile and updated by database triggers.
+ * We fetch directly from the database to get fresh values after mutations.
  */
 export function useStats() {
-  const { user, profile } = useAuth()
+  const { user } = useAuth()
 
   return useQuery({
     queryKey: statsKeys.user(user?.id || ''),
     queryFn: async (): Promise<UserStats> => {
-      if (!user || !profile) {
+      if (!user) {
         return {
           total_chapters_read: 0,
           current_streak: 0,
@@ -29,8 +29,14 @@ export function useStats() {
         }
       }
 
-      // Stats are now computed by database triggers and stored on profile
-      // We just need to count active/completed plans
+      // Fetch fresh profile stats from database (updated by triggers)
+      const { data: profileData } = await (supabase
+        .from('profiles') as ReturnType<typeof supabase.from>)
+        .select('current_streak, longest_streak, total_chapters_read, total_days_reading')
+        .eq('id', user.id)
+        .single()
+
+      // Count active/completed plans
       const { data: userPlans } = await (supabase
         .from('user_plans') as ReturnType<typeof supabase.from>)
         .select('id, is_completed, is_archived')
@@ -40,17 +46,25 @@ export function useStats() {
       const plansActive = plans.filter((p) => !p.is_completed && !p.is_archived).length
       const plansCompleted = plans.filter((p) => p.is_completed).length
 
+      const profile = profileData as {
+        current_streak: number
+        longest_streak: number
+        total_chapters_read: number
+        total_days_reading: number
+      } | null
+
       return {
-        total_chapters_read: profile.total_chapters_read ?? 0,
-        current_streak: profile.current_streak ?? 0,
-        longest_streak: profile.longest_streak ?? 0,
+        total_chapters_read: profile?.total_chapters_read ?? 0,
+        current_streak: profile?.current_streak ?? 0,
+        longest_streak: profile?.longest_streak ?? 0,
         plans_completed: plansCompleted,
         plans_active: plansActive,
-        total_days_reading: profile.total_days_reading ?? 0,
+        total_days_reading: profile?.total_days_reading ?? 0,
       }
     },
     enabled: !!user,
-    staleTime: 1000 * 60 * 5, // 5 minutes
+    staleTime: 0, // Always refetch when invalidated for real-time updates
+    gcTime: 1000 * 60 * 5, // Keep in cache for 5 min but always check for fresh
   })
 }
 
