@@ -1,7 +1,38 @@
-import { QueryClient } from '@tanstack/react-query'
+import { QueryClient, QueryCache, MutationCache } from '@tanstack/react-query'
 import { createSyncStoragePersister } from '@tanstack/query-sync-storage-persister'
+import { captureError } from './errorLogger'
+
+// Global error handler for queries
+const queryCache = new QueryCache({
+  onError: (error, query) => {
+    // Only capture errors that have exhausted retries
+    captureError(error, {
+      component: 'QueryCache',
+      action: query.queryKey.join('/'),
+      extra: {
+        queryKey: query.queryKey,
+        state: query.state.status,
+      },
+    })
+  },
+})
+
+// Global error handler for mutations
+const mutationCache = new MutationCache({
+  onError: (error, _variables, _context, mutation) => {
+    captureError(error, {
+      component: 'MutationCache',
+      action: mutation.options.mutationKey?.join('/') || 'unknown',
+      extra: {
+        mutationKey: mutation.options.mutationKey,
+      },
+    })
+  },
+})
 
 export const queryClient = new QueryClient({
+  queryCache,
+  mutationCache,
   defaultOptions: {
     queries: {
       staleTime: 1000 * 60 * 5, // 5 minutes

@@ -1,73 +1,120 @@
-# React + TypeScript + Vite
+# Biblical Battle Plans
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+An RPG-themed Bible reading tracker that turns your Scripture journey into an epic quest. Build streaks, complete reading plans, and grow in the Word.
 
-Currently, two official plugins are available:
+> "Put on the full armor of God" — Ephesians 6:11
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+## Features
 
-## React Compiler
+### Multiple Quest Types
+- **Sequential Plans** - Read through books or sections in order
+- **Cycling Plans** - Rotate through multiple reading lists simultaneously
+- **Sectional Plans** - Focus on specific Bible sections
+- **Free Reading** - Log any chapters you read, your way
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+### Progress Tracking
+- Daily reading checklists
+- Chapter completion tracking
+- Plan progress visualization
+- Reading history
 
-## Expanding the ESLint configuration
+### Streak System
+- Track consecutive days of reading
+- Streak badges and milestones
+- Visual streak indicators
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+### Daily Inspiration
+- Verse of the day on your dashboard
+- Start each day equipped for spiritual battles
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+### User Profiles
+- Personal reading statistics
+- Campaign history
+- Completed quest tracking
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+## Tech Stack
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+- **Frontend**: React 19, TypeScript, Tailwind CSS 4
+- **Build**: Vite 7
+- **State**: Zustand, TanStack Query
+- **Backend**: Supabase (Auth, Database)
+- **PWA**: vite-plugin-pwa
+- **Hosting**: Vercel
+
+## Getting Started
+
+### Prerequisites
+- Node.js 18+
+- npm or yarn
+- Supabase project
+
+### Installation
+
+```bash
+# Clone the repository
+git clone https://github.com/cjcontreras/BiblicalBattlePlans.git
+cd BiblicalBattlePlans
+
+# Install dependencies
+npm install
+
+# Set up environment variables
+cp .env.example .env
+# Add your Supabase URL and anon key
+
+# Start development server
+npm run dev
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+### Scripts
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+npm run dev      # Start development server
+npm run build    # Build for production
+npm run preview  # Preview production build
+npm run lint     # Run ESLint
 ```
+
+## Roadmap
+
+### Milestone Celebrations
+- Toast notifications for streak milestones (7, 30, 60, 90 days)
+- Rank promotion celebrations
+- Plan completion rewards
+- Chapter milestone acknowledgments
+
+### Notes & Reflections
+- Add notes to any reading plan type
+- Journal page to browse all notes over time
+- Filter by plan and date range
+- Search notes content
+
+### Battle Buddy System
+- Invite a friend as your accountability partner
+- See your buddy's progress and streak
+- Optional shared streak (both must read daily)
+- Encourage each other in the journey
+
+### Group Campaigns
+- Create or join reading groups (churches, friend groups)
+- Group leaderboards and activity feeds
+- Collective reading challenges
+- Recommended plans for group members
+
+### Enhanced Gamification
+- **Achievement Badges**: Unlock badges for streaks, chapters read, plans completed
+- **XP & Leveling**: Earn experience points and level up your profile
+- **Streak Shields**: Protect your streak from breaking (earned through consistency)
+- **Weekly Challenges**: Rotating challenges with bonus rewards
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit issues and pull requests.
+
+## License
+
+This project is proprietary software created by ShirePath Solutions.
+
+## Acknowledgements
+
+Built with pixel-perfect care by [ShirePath Solutions](https://shirepathsolutions.com).

@@ -10,6 +10,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@sentry/react": "^10.32.1",
     "@supabase/supabase-js": "^2.89.0",
     "@tanstack/query-sync-storage-persister": "^5.90.14",
     "@tanstack/react-query": "^5.90.12",

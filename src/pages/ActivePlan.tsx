@@ -17,6 +17,7 @@ import {
   getChaptersReadToday,
 } from '../hooks/usePlans'
 import { useAuth } from '../hooks/useAuth'
+import { captureError } from '../lib/errorLogger'
 import { ReadingSection, PlanProgress, FreeReadingInput } from '../components/plans'
 import { Card, CardHeader, CardContent, Button, LoadingSpinner, Badge } from '../components/ui'
 import { queryClient } from '../lib/queryClient'
@@ -182,8 +183,8 @@ export function ActivePlan() {
         toast.success("Today's reading complete!")
       }
     } catch (error) {
+      captureError(error, { component: 'ActivePlan', action: 'toggleSection', planId: id })
       toast.error('Failed to update reading. Please try again.')
-      console.error('Toggle section error:', error)
     }
   }
 
@@ -206,8 +207,8 @@ export function ActivePlan() {
         })
       }
     } catch (error) {
+      captureError(error, { component: 'ActivePlan', action: 'continue', planId: id })
       toast.error('Failed to continue. Please try again.')
-      console.error('Continue error:', error)
     }
   }
 
@@ -224,8 +225,8 @@ export function ActivePlan() {
 
       toast.success(`Logged ${chapters} chapter${chapters !== 1 ? 's' : ''}!`)
     } catch (error) {
+      captureError(error, { component: 'ActivePlan', action: 'logFreeReading', planId: id })
       toast.error('Failed to log reading. Please try again.')
-      console.error('Log free reading error:', error)
     }
   }
 

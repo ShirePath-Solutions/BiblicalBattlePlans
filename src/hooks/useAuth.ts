@@ -1,5 +1,7 @@
 import { create } from 'zustand'
 import { supabase } from '../lib/supabase'
+import { setSentryUser } from '../lib/sentry'
+import { captureError } from '../lib/errorLogger'
 import type { User, Session } from '@supabase/supabase-js'
 import type { Profile } from '../types'
 
@@ -34,7 +36,7 @@ const fetchProfile = async (userId: string): Promise<Profile | null> => {
     .single()
 
   if (error) {
-    console.error('Error fetching profile:', error)
+    captureError(error, { component: 'useAuth', action: 'fetchProfile', userId })
     return null
   }
 
@@ -60,6 +62,7 @@ export const useAuth = create<AuthStore>((set, get) => ({
 
       if (session?.user) {
         const profile = await fetchProfile(session.user.id)
+        setSentryUser({ id: session.user.id, email: session.user.email })
         set({
           user: session.user,
           session,
@@ -69,6 +72,7 @@ export const useAuth = create<AuthStore>((set, get) => ({
           isRecoveryMode: isRecoveryFromUrl, // Set recovery mode if URL indicates recovery
         })
       } else {
+        setSentryUser(null)
         set({
           user: null,
           session: null,
@@ -89,7 +93,7 @@ export const useAuth = create<AuthStore>((set, get) => ({
 
         if ((event === 'PASSWORD_RECOVERY' || (event === 'INITIAL_SESSION' && isRecoveryFromHash)) && session?.user) {
           // User clicked a password reset link - set recovery mode
-          console.log('Password recovery mode activated')
+          setSentryUser({ id: session.user.id, email: session.user.email })
           set({
             user: session.user,
             session,
@@ -130,6 +134,7 @@ export const useAuth = create<AuthStore>((set, get) => ({
           }
 
           const profile = await fetchProfile(session.user.id)
+          setSentryUser({ id: session.user.id, email: session.user.email })
           set({
             user: session.user,
             session,
@@ -138,6 +143,7 @@ export const useAuth = create<AuthStore>((set, get) => ({
             isRecoveryMode: false,
           })
         } else if (event === 'SIGNED_OUT') {
+          setSentryUser(null)
           set({
             user: null,
             session: null,
@@ -154,7 +160,7 @@ export const useAuth = create<AuthStore>((set, get) => ({
         }
       })
     } catch (error) {
-      console.error('Auth initialization error:', error)
+      captureError(error, { component: 'useAuth', action: 'initialize' }, 'fatal')
       set({ isLoading: false, isInitialized: true })
     }
   },
