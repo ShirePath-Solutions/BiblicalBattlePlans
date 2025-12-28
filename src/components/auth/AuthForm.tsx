@@ -90,9 +90,7 @@ export function AuthForm({ mode, onSubmit, isLoading = false, error }: AuthFormP
   const displayError = validationError || error
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4" autoComplete="on" action="#">
-      {/* Hidden submit for iOS autofill detection */}
-      <input type="submit" hidden />
+    <form onSubmit={handleSubmit} className="space-y-4" autoComplete="on">
       {mode === 'signup' && (
         <Input
           label="Full Name"
@@ -111,18 +109,19 @@ export function AuthForm({ mode, onSubmit, isLoading = false, error }: AuthFormP
       {mode !== 'reset-password' && (
         <Input
           label="Email"
-          name="email"
+          name={mode === 'login' ? 'username' : 'email'}
           id="email"
           type="email"
           inputMode="email"
           autoCapitalize="off"
           autoCorrect="off"
           spellCheck={false}
+          enterKeyHint={mode === 'login' ? 'next' : 'done'}
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           placeholder="Enter your email"
           disabled={isLoading}
-          autoComplete="email"
+          autoComplete={mode === 'login' ? 'username' : 'email'}
         />
       )}
 
@@ -132,6 +131,7 @@ export function AuthForm({ mode, onSubmit, isLoading = false, error }: AuthFormP
           name="password"
           id="password"
           type="password"
+          enterKeyHint={mode === 'login' ? 'go' : 'next'}
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           placeholder="••••••••"

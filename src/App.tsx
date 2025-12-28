@@ -20,23 +20,27 @@ function ScrollToTop() {
   }, [])
 
   useEffect(() => {
-    // On mobile, the keyboard may have just closed, affecting viewport.
-    // Use multiple scroll attempts to ensure it works after DOM settles.
+    // Force scroll to top - works on iOS Safari after keyboard closes
     const scrollToTop = () => {
-      window.scrollTo(0, 0)
+      // Standard scroll methods
+      window.scrollTo({ top: 0, left: 0, behavior: 'instant' })
       document.documentElement.scrollTop = 0
       document.body.scrollTop = 0
+
+      // Also scroll the root element if it has overflow
+      const root = document.getElementById('root')
+      if (root) root.scrollTop = 0
     }
 
     // Immediate scroll
     scrollToTop()
 
-    // Delayed scroll for mobile keyboard close timing
-    const timeoutId = setTimeout(() => {
-      requestAnimationFrame(scrollToTop)
-    }, 100)
+    // iOS keyboard takes ~300ms to close, so we need delayed attempts
+    const timers = [50, 150, 300].map(delay =>
+      setTimeout(() => requestAnimationFrame(scrollToTop), delay)
+    )
 
-    return () => clearTimeout(timeoutId)
+    return () => timers.forEach(clearTimeout)
   }, [pathname])
 
   return null
