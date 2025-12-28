@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase'
 import { useAuth } from './useAuth'
-import type { ReadingPlan, UserPlan, DailyProgress, CyclingListsStructure, ListPositions, WeeklySectionalStructure } from '../types'
+import type { ReadingPlan, UserPlan, DailyProgress, DailyStructure, CyclingListsStructure, ListPositions, WeeklySectionalStructure } from '../types'
 
 // Helper type for today's reading result
 export interface TodaySection {
@@ -27,6 +27,27 @@ export const planKeys = {
 // Get today's date in user's local timezone (YYYY-MM-DD)
 export function getLocalDate(): string {
   return new Date().toLocaleDateString('en-CA') // Returns YYYY-MM-DD format
+}
+
+// Parse a passage string and count the chapters
+// Examples: "Genesis 1" → 1, "Genesis 1-3" → 3, "Romans 7-8" → 2, "Psalm 119" → 1
+export function countChaptersInPassage(passage: string): number {
+  // Match patterns like "Book N-M" or "Book N"
+  const rangeMatch = passage.match(/(\d+)\s*-\s*(\d+)/)
+  if (rangeMatch) {
+    const start = parseInt(rangeMatch[1], 10)
+    const end = parseInt(rangeMatch[2], 10)
+    return Math.max(1, end - start + 1)
+  }
+
+  // Single chapter
+  const singleMatch = passage.match(/\d+/)
+  if (singleMatch) {
+    return 1
+  }
+
+  // Fallback - assume 1 chapter
+  return 1
 }
 
 // Fetch all available reading plans
@@ -173,7 +194,7 @@ export function useTodaysTotalChapters() {
       // Fetch all progress for today across all plans
       const { data: progressData, error: progressError } = await (supabase
         .from('daily_progress') as ReturnType<typeof supabase.from>)
-        .select('*, user_plan:user_plans(*, plan:reading_plans(*))')
+        .select('*, user_plan:user_plans(current_day, plan:reading_plans(daily_structure))')
         .eq('user_id', user.id)
         .eq('date', today)
 
@@ -183,8 +204,9 @@ export function useTodaysTotalChapters() {
       type ProgressWithPlan = {
         completed_sections?: string[]
         user_plan?: {
+          current_day?: number
           plan?: {
-            daily_structure?: { type: string; chapters_per_day?: number }
+            daily_structure?: DailyStructure
           }
         }
       }
@@ -192,17 +214,101 @@ export function useTodaysTotalChapters() {
       // Calculate total chapters based on plan types
       let totalChapters = 0
       for (const progress of progressData as ProgressWithPlan[]) {
-        const sectionsCount = progress.completed_sections?.length || 0
-        const planType = progress.user_plan?.plan?.daily_structure?.type
-        const chaptersPerDay = progress.user_plan?.plan?.daily_structure?.chapters_per_day || 3
+        const completedSections = progress.completed_sections || []
+        const dailyStructure = progress.user_plan?.plan?.daily_structure
+        const currentDay = progress.user_plan?.current_day || 1
 
-        if (planType === 'sequential') {
-          // For sequential plans, each completed section is chapters_per_day chapters
-          totalChapters += sectionsCount * chaptersPerDay
-        } else {
-          // For cycling, sectional, free reading - each section is one chapter
-          totalChapters += sectionsCount
+        if (!dailyStructure) {
+          totalChapters += completedSections.length
+          continue
         }
+
+        const planType = dailyStructure.type
+
+        // For cycling plans, each completed section is one chapter
+        if (planType === 'cycling_lists') {
+          totalChapters += completedSections.length
+          continue
+        }
+
+        // For sequential plans, look up passages and count chapters
+        if (planType === 'sequential') {
+          const structure = dailyStructure as import('../types').SequentialStructure
+          const dayReading = structure.readings?.find(r => r.day === currentDay)
+
+          if (dayReading && completedSections.length > 0) {
+            for (const section of dayReading.sections) {
+              const sectionId = `day-${currentDay}`
+              if (completedSections.includes(sectionId)) {
+                for (const passage of section.passages) {
+                  totalChapters += countChaptersInPassage(passage)
+                }
+              }
+            }
+          } else {
+            // Fallback
+            const legacyStructure = dailyStructure as unknown as { chapters_per_day?: number }
+            totalChapters += completedSections.length * (legacyStructure.chapters_per_day || 3)
+          }
+          continue
+        }
+
+        // For sectional plans, parse day from completed section IDs
+        if (planType === 'sectional') {
+          const structure = dailyStructure as import('../types').SectionalStructure
+          let dayChapters = 0
+
+          for (const sectionStr of completedSections) {
+            // Extract day number from section ID (e.g., "day3-family1" -> 3)
+            const dayMatch = sectionStr.match(/^day(\d+)-(.+)$/)
+            if (!dayMatch) continue
+
+            const dayNum = parseInt(dayMatch[1], 10)
+            const sectionId = dayMatch[2]
+
+            const dayReading = structure.readings?.find(r => r.day === dayNum)
+            if (!dayReading) continue
+
+            const section = dayReading.sections.find(s => s.id === sectionId)
+            if (section) {
+              for (const passage of section.passages) {
+                dayChapters += countChaptersInPassage(passage)
+              }
+            }
+          }
+
+          totalChapters += dayChapters > 0 ? dayChapters : completedSections.length
+          continue
+        }
+
+        // For weekly_sectional plans, parse week/day from completed section IDs
+        if (planType === 'weekly_sectional') {
+          const structure = dailyStructure as import('../types').WeeklySectionalStructure
+          let weekChapters = 0
+
+          for (const sectionStr of completedSections) {
+            // Extract week and day from section ID (e.g., "week1-day3" -> week 1, day 3)
+            const match = sectionStr.match(/^week(\d+)-day(\d+)$/)
+            if (!match) continue
+
+            const weekNum = parseInt(match[1], 10)
+            const dayOfWeek = parseInt(match[2], 10)
+
+            const weekReading = structure.weeks?.find(w => w.week === weekNum)
+            if (!weekReading) continue
+
+            const reading = weekReading.readings.find(r => r.dayOfWeek === dayOfWeek)
+            if (reading) {
+              weekChapters += countChaptersInPassage(reading.passage)
+            }
+          }
+
+          totalChapters += weekChapters > 0 ? weekChapters : completedSections.length
+          continue
+        }
+
+        // Fallback for free reading and unknown types
+        totalChapters += completedSections.length
       }
 
       return totalChapters
@@ -589,10 +695,11 @@ export function useMarkSectionComplete() {
         queryKey: planKeys.dailyProgress(variables.userPlanId, today),
       })
 
-      // Always invalidate stats and allTodayProgress when sections are marked
+      // Always invalidate stats, allTodayProgress, and todaysTotalProgress when sections are marked
       if (user) {
         queryClient.invalidateQueries({ queryKey: ['stats', user.id] })
         queryClient.invalidateQueries({ queryKey: ['allTodayProgress', user.id, today] })
+        queryClient.invalidateQueries({ queryKey: planKeys.todaysTotalProgress(user.id, today) })
       }
 
       if (data.is_complete && user) {
@@ -853,7 +960,8 @@ export function calculatePlanProgress(userPlan: UserPlan, plan: ReadingPlan): nu
 // Get count of chapters read today
 export function getChaptersReadToday(
   progress: DailyProgress | null,
-  plan?: ReadingPlan | null
+  plan?: ReadingPlan | null,
+  userPlan?: { current_day: number } | null
 ): number {
   if (!progress) return 0
 
@@ -862,25 +970,84 @@ export function getChaptersReadToday(
     return progress.completed_sections.length
   }
 
-  // For sequential plans, each completed section represents chapters_per_day chapters
+  // For sequential plans, count chapters from the passages for this day
   if (plan.daily_structure.type === 'sequential') {
-    const structure = plan.daily_structure as unknown as {
-      type: 'sequential'
-      chapters_per_day: number
+    const structure = plan.daily_structure as import('../types').SequentialStructure
+    const currentDay = userPlan?.current_day || 1
+    const dayReading = structure.readings?.find(r => r.day === currentDay)
+
+    if (dayReading && progress.completed_sections.length > 0) {
+      // Count total chapters from all sections' passages
+      let totalChapters = 0
+      for (const section of dayReading.sections) {
+        const sectionId = `day-${currentDay}`
+        if (progress.completed_sections.includes(sectionId)) {
+          for (const passage of section.passages) {
+            totalChapters += countChaptersInPassage(passage)
+          }
+        }
+      }
+      // If we found passages, return the count, otherwise fall back to default
+      if (totalChapters > 0) return totalChapters
     }
-    return progress.completed_sections.length * (structure.chapters_per_day || 3)
+
+    // Fallback: use chapters_per_day if available
+    const legacyStructure = plan.daily_structure as unknown as { chapters_per_day?: number }
+    return progress.completed_sections.length * (legacyStructure.chapters_per_day || 3)
   }
 
-  // For sectional plans, each section typically represents one reading
-  // but we count the number of sections completed
+  // For sectional plans, count chapters from completed sections
+  // Parse the day number from each completed section (format: "day{N}-{sectionId}")
   if (plan.daily_structure.type === 'sectional') {
-    return progress.completed_sections.length
+    const structure = plan.daily_structure as import('../types').SectionalStructure
+    let totalChapters = 0
+
+    for (const sectionStr of progress.completed_sections) {
+      // Extract day number from section ID (e.g., "day3-family1" -> 3)
+      const dayMatch = sectionStr.match(/^day(\d+)-(.+)$/)
+      if (!dayMatch) continue
+
+      const dayNum = parseInt(dayMatch[1], 10)
+      const sectionId = dayMatch[2]
+
+      const dayReading = structure.readings?.find(r => r.day === dayNum)
+      if (!dayReading) continue
+
+      const section = dayReading.sections.find(s => s.id === sectionId)
+      if (section) {
+        for (const passage of section.passages) {
+          totalChapters += countChaptersInPassage(passage)
+        }
+      }
+    }
+
+    return totalChapters > 0 ? totalChapters : progress.completed_sections.length
   }
 
-  // For weekly_sectional plans, each reading is typically 1-6 chapters
-  // We count completed readings as 1 each for simplicity
+  // For weekly_sectional plans, count chapters from completed readings
+  // Parse the week/day from each completed section (format: "week{W}-day{D}")
   if (plan.daily_structure.type === 'weekly_sectional') {
-    return progress.completed_sections.length
+    const structure = plan.daily_structure as import('../types').WeeklySectionalStructure
+    let totalChapters = 0
+
+    for (const sectionStr of progress.completed_sections) {
+      // Extract week and day from section ID (e.g., "week1-day3" -> week 1, day 3)
+      const match = sectionStr.match(/^week(\d+)-day(\d+)$/)
+      if (!match) continue
+
+      const weekNum = parseInt(match[1], 10)
+      const dayOfWeek = parseInt(match[2], 10)
+
+      const weekReading = structure.weeks?.find(w => w.week === weekNum)
+      if (!weekReading) continue
+
+      const reading = weekReading.readings.find(r => r.dayOfWeek === dayOfWeek)
+      if (reading) {
+        totalChapters += countChaptersInPassage(reading.passage)
+      }
+    }
+
+    return totalChapters > 0 ? totalChapters : progress.completed_sections.length
   }
 
   return progress.completed_sections.length

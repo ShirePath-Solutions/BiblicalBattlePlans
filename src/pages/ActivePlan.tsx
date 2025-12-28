@@ -104,7 +104,7 @@ export function ActivePlan() {
   })() : null
 
   // Chapters read in THIS plan today (for plan-specific display)
-  const chaptersReadToday = getChaptersReadToday(progress || null, plan)
+  const chaptersReadToday = getChaptersReadToday(progress || null, plan, userPlan)
 
   // Streak is based on TOTAL chapters across ALL plans today
   const streakMinimum = profile?.streak_minimum || 3
