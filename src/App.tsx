@@ -13,7 +13,17 @@ function ScrollToTop() {
   const { pathname } = useLocation()
 
   useEffect(() => {
+    // Disable browser's scroll restoration
+    if ('scrollRestoration' in window.history) {
+      window.history.scrollRestoration = 'manual'
+    }
+  }, [])
+
+  useEffect(() => {
+    // Scroll to top immediately and after a small delay to handle async content
     window.scrollTo(0, 0)
+    const timeout = setTimeout(() => window.scrollTo(0, 0), 0)
+    return () => clearTimeout(timeout)
   }, [pathname])
 
   return null

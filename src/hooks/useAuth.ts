@@ -216,14 +216,13 @@ export const useAuth = create<AuthStore>((set, get) => ({
   },
 
   signOut: async () => {
-    set({ isLoading: true })
-    await supabase.auth.signOut()
+    // Clear state immediately - no loading state needed for sign out
     set({
       user: null,
       session: null,
       profile: null,
-      isLoading: false,
     })
+    await supabase.auth.signOut()
   },
 
   resetPassword: async (email: string) => {
