@@ -4,11 +4,11 @@ import { Toaster } from 'sonner'
 import { useAuth } from './hooks/useAuth'
 import { ProtectedRoute } from './components/auth'
 import { Layout } from './components/Layout'
-import { Login, Signup, ForgotPassword, ResetPassword, Dashboard, Plans, PlanDetail, ActivePlan, Profile, Acknowledgements } from './pages'
+import { Landing, Login, Signup, ForgotPassword, ResetPassword, Dashboard, Plans, PlanDetail, ActivePlan, Profile, Acknowledgements } from './pages'
 import { LoadingOverlay } from './components/ui'
 
 function App() {
-  const { initialize, isInitialized } = useAuth()
+  const { initialize, isInitialized, user } = useAuth()
 
   useEffect(() => {
     initialize()
@@ -34,7 +34,13 @@ function App() {
         }}
       />
       <Routes>
-        {/* Public routes */}
+        {/* Public landing page - redirect to dashboard if authenticated */}
+        <Route
+          path="/"
+          element={user ? <Navigate to="/dashboard" replace /> : <Landing />}
+        />
+
+        {/* Public auth routes */}
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
@@ -42,22 +48,21 @@ function App() {
 
         {/* Protected routes */}
         <Route
-          path="/"
           element={
             <ProtectedRoute>
               <Layout />
             </ProtectedRoute>
           }
         >
-          <Route index element={<Dashboard />} />
-          <Route path="plans" element={<Plans />} />
-          <Route path="plans/:id" element={<PlanDetail />} />
-          <Route path="campaign/:id" element={<ActivePlan />} />
-          <Route path="profile" element={<Profile />} />
-          <Route path="acknowledgements" element={<Acknowledgements />} />
+          <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/plans" element={<Plans />} />
+          <Route path="/plans/:id" element={<PlanDetail />} />
+          <Route path="/campaign/:id" element={<ActivePlan />} />
+          <Route path="/profile" element={<Profile />} />
+          <Route path="/acknowledgements" element={<Acknowledgements />} />
         </Route>
 
-        {/* Catch all - redirect to dashboard */}
+        {/* Catch all - redirect appropriately */}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>

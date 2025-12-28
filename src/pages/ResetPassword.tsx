@@ -110,14 +110,14 @@ export function ResetPassword() {
   return (
     <div className="min-h-screen bg-parchment-dark flex items-center justify-center p-4">
       <div className="w-full max-w-md">
-        {/* Logo Placeholder */}
-        <div className="flex flex-col items-center mb-8">
-          <div className="w-20 h-20 bg-gradient-to-br from-gold to-bronze border-2 border-gold-dark flex items-center justify-center shadow-[0_4px_12px_var(--shadow-color)] mb-4">
-            <span className="font-pixel text-sm text-ink">BBP</span>
+        {/* Logo - links back to landing page */}
+        <Link to="/" className="flex flex-col items-center mb-8 group">
+          <div className="w-20 h-20 flex items-center justify-center mb-4 group-hover:scale-105 transition-transform">
+            <img src="/BiblicalBattlePlansLogo.png" alt="Biblical Battle Plans" className="w-full h-full object-contain" />
           </div>
-          <h1 className="font-pixel text-[0.75rem] text-ink text-center">BIBLICAL BATTLE PLANS</h1>
+          <h1 className="font-pixel text-[0.75rem] text-ink text-center group-hover:text-sage transition-colors">BIBLICAL BATTLE PLANS</h1>
           <p className="font-pixel text-[0.5rem] text-ink-muted text-center mt-1">"The sword of the Spirit"</p>
-        </div>
+        </Link>
 
         <Card variant="elevated">
           <CardHeader>

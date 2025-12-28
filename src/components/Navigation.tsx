@@ -9,7 +9,7 @@ interface NavItem {
 
 // Removed QUESTS from nav - users access it via "NEW QUEST" button
 const navItems: NavItem[] = [
-  { path: '/', label: 'HOME', icon: Home },
+  { path: '/dashboard', label: 'HOME', icon: Home },
   { path: '/profile', label: 'HERO', icon: Shield },
 ]
 

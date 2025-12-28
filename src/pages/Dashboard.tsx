@@ -5,6 +5,7 @@ import { useUserPlans, getCurrentReadings, getTodaysReading, calculatePlanProgre
 import { useStats } from '../hooks/useStats'
 import { useVerseOfDay } from '../hooks/useVerseOfDay'
 import { Card, CardContent, Button, StreakBadge, LoadingSpinner, ProgressBar } from '../components/ui'
+import { queryClient } from '../lib/queryClient'
 
 export function Dashboard() {
   const { profile, user } = useAuth()
@@ -34,10 +35,10 @@ export function Dashboard() {
           <p className="font-pixel text-[0.625rem] text-danger">ERROR: Failed to load data</p>
           <p className="font-pixel text-[0.5rem] text-ink-muted mt-2">{error.message}</p>
           <button
-            onClick={() => window.location.reload()}
+            onClick={() => queryClient.refetchQueries()}
             className="mt-4 font-pixel text-[0.625rem] text-sage hover:text-sage-dark underline"
           >
-            Refresh Page
+            Try Again
           </button>
         </CardContent>
       </Card>

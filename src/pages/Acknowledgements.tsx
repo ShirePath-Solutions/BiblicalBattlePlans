@@ -47,7 +47,7 @@ export function Acknowledgements() {
     <div className="max-w-3xl mx-auto space-y-6">
       {/* Back button */}
       <Link
-        to="/"
+        to="/dashboard"
         className="inline-flex items-center gap-1 font-pixel text-[0.625rem] text-ink-muted hover:text-sage transition-colors"
       >
         <ChevronLeft className="w-4 h-4" />

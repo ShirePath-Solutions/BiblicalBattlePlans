@@ -1,6 +1,7 @@
 import { useReadingPlans, useUserPlans } from '../hooks/usePlans'
 import { PlanCard, ArchivedPlanCard } from '../components/plans'
 import { LoadingSpinner, Card, CardContent } from '../components/ui'
+import { queryClient } from '../lib/queryClient'
 
 export function Plans() {
   const { data: plans, isLoading: plansLoading, error: plansError } = useReadingPlans()
@@ -24,10 +25,10 @@ export function Plans() {
           <p className="font-pixel text-[0.625rem] text-danger">ERROR: Failed to load data</p>
           <p className="font-pixel text-[0.5rem] text-ink-muted mt-2">{error.message}</p>
           <button
-            onClick={() => window.location.reload()}
+            onClick={() => queryClient.refetchQueries()}
             className="mt-4 font-pixel text-[0.625rem] text-sage hover:text-sage-dark underline"
           >
-            Refresh Page
+            Try Again
           </button>
         </CardContent>
       </Card>

@@ -93,7 +93,7 @@ export function AuthForm({ mode, onSubmit, isLoading = false, error }: AuthFormP
     <form onSubmit={handleSubmit} className="space-y-4">
       {mode === 'signup' && (
         <Input
-          label="Username"
+          label="Full Name"
           type="text"
           value={username}
           onChange={(e) => setUsername(e.target.value)}

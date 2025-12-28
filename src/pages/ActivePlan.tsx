@@ -19,6 +19,7 @@ import {
 import { useAuth } from '../hooks/useAuth'
 import { ReadingSection, PlanProgress, FreeReadingInput } from '../components/plans'
 import { Card, CardHeader, CardContent, Button, LoadingSpinner, Badge } from '../components/ui'
+import { queryClient } from '../lib/queryClient'
 
 export function ActivePlan() {
   const { id } = useParams<{ id: string }>()
@@ -57,12 +58,12 @@ export function ActivePlan() {
           <p className="font-pixel text-[0.5rem] text-ink-muted mt-2">{error.message}</p>
           <div className="flex gap-4 justify-center mt-4">
             <button
-              onClick={() => window.location.reload()}
+              onClick={() => queryClient.refetchQueries()}
               className="font-pixel text-[0.625rem] text-sage hover:text-sage-dark underline"
             >
-              Refresh Page
+              Try Again
             </button>
-            <Button variant="secondary" onClick={() => navigate('/')}>
+            <Button variant="secondary" onClick={() => navigate('/dashboard')}>
               Back to Dashboard
             </Button>
           </div>
@@ -76,7 +77,7 @@ export function ActivePlan() {
       <Card>
         <CardContent className="text-center py-8">
           <p className="font-pixel text-[0.625rem] text-danger">ERROR: Quest not found</p>
-          <Button variant="secondary" onClick={() => navigate('/')} className="mt-4">
+          <Button variant="secondary" onClick={() => navigate('/dashboard')} className="mt-4">
             Back to Dashboard
           </Button>
         </CardContent>
@@ -232,7 +233,7 @@ export function ActivePlan() {
     <div className="max-w-3xl mx-auto space-y-6">
       {/* Back button */}
       <Link
-        to="/"
+        to="/dashboard"
         className="inline-flex items-center gap-1 font-pixel text-[0.625rem] text-ink-muted hover:text-sage transition-colors"
       >
         <ChevronLeft className="w-4 h-4" />
@@ -607,7 +608,7 @@ export function ActivePlan() {
             View Quest Details
           </Button>
         </Link>
-        <Link to="/" className="flex-1">
+        <Link to="/dashboard" className="flex-1">
           <Button variant="ghost" className="w-full">
             Return to Dashboard
           </Button>

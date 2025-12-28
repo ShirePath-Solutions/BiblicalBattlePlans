@@ -27,9 +27,9 @@ export function Layout() {
             {/* Logo */}
             <div className="flex items-center gap-4">
               {/* Logo Placeholder - Replace with actual logo */}
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-gradient-to-br from-gold to-bronze border-2 border-gold-dark flex items-center justify-center shadow-[0_2px_4px_var(--shadow-color)]">
-                  <span className="font-pixel text-[0.5rem] text-ink">BBP</span>
+              <Link to="/dashboard" className="flex items-center gap-3">
+                <div className="w-10 h-10 flex items-center justify-center">
+                  <img src="/BiblicalBattlePlansLogo.png" alt="BBP" className="w-full h-full object-contain" />
                 </div>
                 <div className="hidden md:block">
                   <h1 className="font-pixel text-[0.625rem] text-ink leading-tight">
@@ -39,7 +39,7 @@ export function Layout() {
                     PLANS
                   </p>
                 </div>
-              </div>
+              </Link>
               
               <div className="hidden md:block ml-4">
                 <Navigation />
