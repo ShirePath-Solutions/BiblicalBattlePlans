@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { Infinity, ChevronLeft } from 'lucide-react'
+import { Infinity, ChevronLeft, ChevronRight, ChevronDown, ChevronUp } from 'lucide-react'
 import { toast } from 'sonner'
 import { useReadingPlan, useStartPlan, useUserPlans, getTodaysReading } from '../hooks/usePlans'
 import { Card, CardHeader, CardContent, CardFooter, Button, Badge, LoadingSpinner, Input } from '../components/ui'
@@ -14,6 +14,8 @@ export function PlanDetail() {
   const startPlan = useStartPlan()
 
   const [startDate, setStartDate] = useState(new Date().toISOString().split('T')[0])
+  const [previewDay, setPreviewDay] = useState(1)
+  const [showSchedule, setShowSchedule] = useState(false)
 
   // Check if user already has this plan active
   const existingUserPlan = userPlans?.find(
@@ -99,11 +101,11 @@ export function PlanDetail() {
     <div className="max-w-3xl mx-auto space-y-6">
       {/* Back button */}
       <button
-        onClick={() => navigate('/plans')}
+        onClick={() => navigate(-1)}
         className="inline-flex items-center gap-1 font-pixel text-[0.625rem] text-ink-muted hover:text-gold transition-colors"
       >
         <ChevronLeft className="w-4 h-4" />
-        BACK TO QUESTS
+        BACK
       </button>
 
       {/* Plan Header */}
@@ -154,11 +156,90 @@ export function PlanDetail() {
             <div className="font-pixel text-[0.625rem] text-ink">{typeInfo.description}</div>
           </div>
 
-          {/* Sample Day Preview */}
-          {plan.daily_structure.type !== 'free_reading' && (
+          {/* Reading Schedule Preview */}
+          {plan.daily_structure.type !== 'free_reading' && plan.daily_structure.type !== 'cycling_lists' && (
+            <div>
+              <button
+                onClick={() => setShowSchedule(!showSchedule)}
+                className="w-full flex items-center justify-between p-3 bg-parchment-light border border-border-subtle hover:border-sage transition-colors"
+              >
+                <span className="font-pixel text-[0.625rem] text-ink">
+                  READING SCHEDULE
+                </span>
+                {showSchedule ? (
+                  <ChevronUp className="w-4 h-4 text-ink-muted" />
+                ) : (
+                  <ChevronDown className="w-4 h-4 text-ink-muted" />
+                )}
+              </button>
+              
+              {showSchedule && (
+                <div className="border border-t-0 border-border-subtle p-4 space-y-4">
+                  {/* Day Navigator */}
+                  <div className="flex items-center justify-between">
+                    <button
+                      onClick={() => setPreviewDay(Math.max(1, previewDay - 1))}
+                      disabled={previewDay <= 1}
+                      className="p-2 border border-border-subtle hover:border-sage disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                    >
+                      <ChevronLeft className="w-4 h-4 text-ink" />
+                    </button>
+                    
+                    <div className="flex items-center gap-3">
+                      <span className="font-pixel text-[0.625rem] text-ink">DAY</span>
+                      <input
+                        type="number"
+                        min={1}
+                        max={plan.duration_days || 365}
+                        value={previewDay}
+                        onChange={(e) => {
+                          const val = parseInt(e.target.value) || 1
+                          const max = plan.duration_days || 365
+                          setPreviewDay(Math.min(Math.max(1, val), max))
+                        }}
+                        className="w-16 px-2 py-1 text-center font-pixel text-[0.625rem] text-ink bg-parchment-light border border-border-subtle focus:border-sage focus:outline-none"
+                      />
+                      <span className="font-pixel text-[0.5rem] text-ink-muted">
+                        of {plan.duration_days || '∞'}
+                      </span>
+                    </div>
+                    
+                    <button
+                      onClick={() => setPreviewDay(Math.min(plan.duration_days || 365, previewDay + 1))}
+                      disabled={plan.duration_days > 0 && previewDay >= plan.duration_days}
+                      className="p-2 border border-border-subtle hover:border-sage disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                    >
+                      <ChevronRight className="w-4 h-4 text-ink" />
+                    </button>
+                  </div>
+                  
+                  {/* Day's Readings */}
+                  <div className="space-y-2">
+                    {getTodaysReading(plan, previewDay).map((section, index) => (
+                      <div
+                        key={section.id || index}
+                        className="p-3 bg-parchment-light border border-border-subtle flex justify-between items-center"
+                      >
+                        <div>
+                          <div className="font-pixel text-[0.5rem] text-ink-muted">{section.label}</div>
+                          <div className="font-pixel text-[0.625rem] text-ink">
+                            {section.passage}
+                          </div>
+                        </div>
+                        <div className="font-pixel text-[0.5rem] text-ink-faint">○</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+          
+          {/* Day 1 Preview for cycling plans (they don't have day-based schedules) */}
+          {plan.daily_structure.type === 'cycling_lists' && (
             <div>
               <h3 className="font-pixel text-[0.5rem] text-ink-muted mb-3">
-                DAY 1 PREVIEW
+                STARTING CHAPTERS
               </h3>
               <div className="space-y-2">
                 {sampleReading.map((section, index) => (

@@ -601,19 +601,12 @@ export function ActivePlan() {
         </CardContent>
       </Card>
 
-      {/* Quick Actions */}
-      <div className="flex gap-4">
-        <Link to={`/plans/${plan.id}`} className="flex-1">
-          <Button variant="ghost" className="w-full">
-            View Quest Details
-          </Button>
-        </Link>
-        <Link to="/dashboard" className="flex-1">
-          <Button variant="ghost" className="w-full">
-            Return to Dashboard
-          </Button>
-        </Link>
-      </div>
+      {/* View Quest Details */}
+      <Link to={`/plans/${plan.id}`}>
+        <Button variant="secondary" className="w-full">
+          VIEW QUEST DETAILS
+        </Button>
+      </Link>
     </div>
   )
 }

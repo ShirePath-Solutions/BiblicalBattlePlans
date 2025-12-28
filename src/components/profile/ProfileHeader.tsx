@@ -36,29 +36,29 @@ export function ProfileHeader({ currentStreak }: ProfileHeaderProps) {
   const currentRank = getCurrentRank(currentStreak)
 
   return (
-    <div className="bg-gradient-to-br from-parchment to-parchment-light border-2 border-border-subtle p-6 shadow-[0_4px_12px_var(--shadow-color)]">
-      <div className="flex flex-col sm:flex-row items-center gap-6">
+    <div className="bg-gradient-to-br from-parchment to-parchment-light border-2 border-border-subtle p-5 shadow-[0_4px_12px_var(--shadow-color)]">
+      <div className="flex items-start gap-4">
         {/* Avatar */}
-        <div className="w-20 h-20 bg-gradient-to-br from-sage to-sage-dark border-2 border-sage-dark flex items-center justify-center shadow-[0_2px_4px_var(--shadow-color)]">
-          <span className="font-pixel text-2xl text-white">
+        <div className="w-16 h-16 sm:w-20 sm:h-20 bg-gradient-to-br from-sage to-sage-dark border-2 border-sage-dark flex items-center justify-center shadow-[0_2px_4px_var(--shadow-color)] flex-shrink-0">
+          <span className="font-pixel text-xl sm:text-2xl text-white">
             {displayName.charAt(0).toUpperCase()}
           </span>
         </div>
 
         {/* Info */}
-        <div className="flex-1 text-center sm:text-left">
-          <h2 className="font-pixel text-sm text-ink">
+        <div className="flex-1 min-w-0">
+          <h2 className="font-pixel text-[0.875rem] sm:text-sm text-ink truncate">
             {displayName.toUpperCase()}
           </h2>
-          <p className="font-pixel text-[0.5rem] text-ink-muted mt-1">
+          <p className="font-pixel text-[0.5rem] text-ink-muted mt-0.5">
             @{username}
           </p>
-          <p className="font-pixel text-[0.5rem] text-ink-faint mt-2">
+          <p className="font-pixel text-[0.5rem] text-ink-faint mt-1.5">
             Enlisted: {joinDate}
           </p>
           
-          <div className="flex flex-col sm:flex-row items-center gap-3 mt-3">
-            <div className="px-3 py-1 bg-sage border border-sage-dark">
+          <div className="flex flex-wrap items-center gap-2 mt-3">
+            <div className="px-2.5 py-1 bg-sage border border-sage-dark">
               <span className="font-pixel text-[0.5rem] text-white">{currentRank.name}</span>
             </div>
             <StreakBadge days={currentStreak} />

@@ -108,6 +108,7 @@ export function AuthForm({ mode, onSubmit, isLoading = false, error }: AuthFormP
         <Input
           label="Email"
           type="email"
+          inputMode="email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           placeholder="hero@biblicalbattleplans.com"
