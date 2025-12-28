@@ -6,6 +6,12 @@ export interface Profile {
   display_name: string | null
   avatar_url: string | null
   streak_minimum: number // Min chapters/day for streak (default 3)
+  // Computed stats (updated by database trigger)
+  current_streak: number
+  longest_streak: number
+  total_chapters_read: number
+  total_days_reading: number
+  last_reading_date: string | null
   created_at: string
   updated_at: string
 }
