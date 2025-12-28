@@ -22,7 +22,10 @@ function ScrollToTop() {
 
   // Scroll to top synchronously on route change using useLayoutEffect
   useLayoutEffect(() => {
-    window.scrollTo({ top: 0, left: 0, behavior: 'instant' })
+    // Use multiple methods to ensure scroll works across all browsers
+    window.scrollTo(0, 0)
+    document.documentElement.scrollTop = 0
+    document.body.scrollTop = 0 // For Safari
   }, [pathname])
 
   return null
