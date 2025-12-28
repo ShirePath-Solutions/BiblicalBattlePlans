@@ -1,5 +1,5 @@
 import { Outlet, Link, useLocation } from 'react-router-dom'
-import { useState, useEffect } from 'react'
+import { useState, useLayoutEffect } from 'react'
 import { ChevronDown, User, LogOut } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
 import { useStats } from '../hooks/useStats'
@@ -14,8 +14,21 @@ export function Layout() {
   const currentStreak = stats?.current_streak || 0
 
   // Scroll to top when entering protected layout (after login) or on route change
-  useEffect(() => {
-    window.scrollTo(0, 0)
+  // Use useLayoutEffect to scroll before browser paint
+  useLayoutEffect(() => {
+    // Scroll both window and document element for cross-browser compatibility
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' })
+    document.documentElement.scrollTop = 0
+    document.body.scrollTop = 0
+    
+    // Also scroll after a short delay to handle mobile keyboard dismiss
+    const timeout = setTimeout(() => {
+      window.scrollTo({ top: 0, left: 0, behavior: 'instant' })
+      document.documentElement.scrollTop = 0
+      document.body.scrollTop = 0
+    }, 100)
+    
+    return () => clearTimeout(timeout)
   }, [location.pathname])
 
   const displayName = profile?.display_name || profile?.username || user?.email?.split('@')[0] || 'Soldier'

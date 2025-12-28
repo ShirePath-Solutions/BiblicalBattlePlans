@@ -90,16 +90,18 @@ export function AuthForm({ mode, onSubmit, isLoading = false, error }: AuthFormP
   const displayError = validationError || error
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    <form onSubmit={handleSubmit} className="space-y-4" autoComplete="on">
       {mode === 'signup' && (
         <Input
           label="Full Name"
+          name="name"
+          id="name"
           type="text"
           value={username}
           onChange={(e) => setUsername(e.target.value)}
           placeholder="hero_name"
           disabled={isLoading}
-          autoComplete="username"
+          autoComplete="name"
           hint="Letters, numbers, and underscores only"
         />
       )}
@@ -108,13 +110,17 @@ export function AuthForm({ mode, onSubmit, isLoading = false, error }: AuthFormP
         <Input
           label="Email"
           name="email"
+          id="email"
           type="email"
           inputMode="email"
+          autoCapitalize="off"
+          autoCorrect="off"
+          spellCheck={false}
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           placeholder="hero@biblicalbattleplans.com"
           disabled={isLoading}
-          autoComplete="email"
+          autoComplete={mode === 'login' ? 'username' : 'email'}
         />
       )}
 
@@ -122,6 +128,7 @@ export function AuthForm({ mode, onSubmit, isLoading = false, error }: AuthFormP
         <Input
           label="Password"
           name="password"
+          id="password"
           type="password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
@@ -134,6 +141,8 @@ export function AuthForm({ mode, onSubmit, isLoading = false, error }: AuthFormP
       {(mode === 'signup' || mode === 'reset-password') && (
         <Input
           label="Confirm Password"
+          name="confirm-password"
+          id="confirm-password"
           type="password"
           value={confirmPassword}
           onChange={(e) => setConfirmPassword(e.target.value)}
