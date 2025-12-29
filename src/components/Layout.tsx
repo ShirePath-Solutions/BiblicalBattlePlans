@@ -1,15 +1,19 @@
 import { Outlet, Link } from 'react-router-dom'
 import { useState } from 'react'
-import { ChevronDown, User, LogOut } from 'lucide-react'
+import { ChevronDown, User, LogOut, Download } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
 import { useStats } from '../hooks/useStats'
+import { useIsPWA } from '../hooks/useIsPWA'
 import { Navigation, MobileNavigation } from './Navigation'
 import { StreakBadge } from './ui'
+import { InstallModal } from './InstallModal'
 
 export function Layout() {
   const { profile, signOut, user } = useAuth()
   const { data: stats } = useStats()
+  const isPWA = useIsPWA()
   const [showUserMenu, setShowUserMenu] = useState(false)
+  const [showInstallModal, setShowInstallModal] = useState(false)
   const currentStreak = stats?.current_streak || 0
 
   const displayName = profile?.display_name || profile?.username || user?.email?.split('@')[0] || 'Soldier'
@@ -130,6 +134,15 @@ export function Layout() {
               </Link>
             </p>
             <div className="flex items-center gap-4">
+              {!isPWA && (
+                <button
+                  onClick={() => setShowInstallModal(true)}
+                  className="flex items-center gap-1 font-pixel text-[0.625rem] text-sage hover:text-sage-dark transition-colors"
+                >
+                  <Download className="w-3 h-3" />
+                  Install App
+                </button>
+              )}
               <Link
                 to="/acknowledgements"
                 className="font-pixel text-[0.625rem] text-sage hover:text-sage-dark transition-colors"
@@ -146,6 +159,12 @@ export function Layout() {
 
       {/* Mobile Navigation */}
       <MobileNavigation />
+
+      {/* Install Modal */}
+      <InstallModal
+        isOpen={showInstallModal}
+        onClose={() => setShowInstallModal(false)}
+      />
     </div>
   )
 }
