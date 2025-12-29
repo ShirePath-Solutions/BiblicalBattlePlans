@@ -73,6 +73,9 @@ function App() {
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password" element={<ResetPassword />} />
 
+        {/* Public info page */}
+        <Route path="/about" element={<About />} />
+
         {/* Protected routes */}
         <Route
           element={
@@ -87,7 +90,6 @@ function App() {
           <Route path="/campaign/:id" element={<ActivePlan />} />
           <Route path="/profile" element={<Profile />} />
           <Route path="/acknowledgements" element={<Acknowledgements />} />
-          <Route path="/about" element={<About />} />
           <Route path="/feedback" element={<Feedback />} />
         </Route>
 

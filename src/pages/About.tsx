@@ -1,13 +1,17 @@
 import { Link } from 'react-router-dom'
 import { ChevronLeft, Mail } from 'lucide-react'
 import { Card, CardContent } from '../components/ui'
+import { useAuth } from '../hooks/useAuth'
 
 export function About() {
+  const { user } = useAuth()
+  const backLink = user ? '/dashboard' : '/'
+
   return (
-    <div className="max-w-3xl mx-auto space-y-6">
+    <div className="max-w-3xl mx-auto space-y-6 p-4">
       {/* Back button */}
       <Link
-        to="/dashboard"
+        to={backLink}
         className="inline-flex items-center gap-1 font-pixel text-[0.625rem] text-ink-muted hover:text-sage transition-colors"
       >
         <ChevronLeft className="w-4 h-4" />
