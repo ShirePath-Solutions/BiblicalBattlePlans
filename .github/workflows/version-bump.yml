@@ -101,6 +101,10 @@ jobs:
       - name: Create version bump branch
         run: |
           BRANCH_NAME="version-bump-${{ env.NEW_VERSION }}"
+
+          # Delete the branch if it exists remotely (from a previous failed run)
+          git push origin --delete "$BRANCH_NAME" 2>/dev/null || true
+
           git checkout -b "$BRANCH_NAME"
           git add package.json
           git commit -m "chore: bump version to ${{ env.NEW_VERSION }} [skip-version]"

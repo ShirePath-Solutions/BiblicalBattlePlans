@@ -87,6 +87,12 @@ export function PlanDetail() {
           variant: 'gold' as const,
           description: 'Daily readings from multiple sections of Scripture',
         }
+      case 'weekly_sectional':
+        return {
+          badge: 'SECTIONAL',
+          variant: 'gold' as const,
+          description: 'Daily readings from multiple sections of Scripture',
+        }
       default:
         return {
           badge: 'STANDARD',
@@ -117,7 +123,7 @@ export function PlanDetail() {
               <h1 className="font-pixel text-sm text-ink">
                 {plan.name.toUpperCase()}
               </h1>
-              <p className="font-pixel text-[0.5rem] text-ink-muted mt-2 leading-relaxed">{plan.description}</p>
+              <p className="font-pixel text-[0.625rem] text-ink-muted mt-2 leading-relaxed">{plan.description}</p>
             </div>
             <Badge variant={typeInfo.variant}>{typeInfo.badge}</Badge>
           </div>

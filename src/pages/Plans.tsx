@@ -54,7 +54,7 @@ export function Plans() {
       {/* Header */}
       <div>
         <h1 className="font-pixel text-sm text-ink mb-2">START NEW QUEST</h1>
-        <p className="font-pixel text-[0.5rem] text-ink-muted">
+        <p className="font-pixel text-[0.625rem] text-ink-muted">
           Choose a reading plan to begin your journey through Scripture
         </p>
       </div>

@@ -50,16 +50,16 @@ export function ProfileHeader({ currentStreak }: ProfileHeaderProps) {
           <h2 className="font-pixel text-[0.875rem] sm:text-sm text-ink truncate">
             {displayName.toUpperCase()}
           </h2>
-          <p className="font-pixel text-[0.5rem] text-ink-muted mt-0.5">
+          <p className="font-pixel text-[0.625rem] text-ink-muted mt-0.5">
             @{username}
           </p>
-          <p className="font-pixel text-[0.5rem] text-ink-faint mt-1.5">
+          <p className="font-pixel text-[0.625rem] text-ink-faint mt-1.5">
             Enlisted: {joinDate}
           </p>
           
           <div className="flex flex-wrap items-center gap-2 mt-3">
             <div className="px-2.5 py-1 bg-sage border border-sage-dark">
-              <span className="font-pixel text-[0.5rem] text-white">{currentRank.name}</span>
+              <span className="font-pixel text-[0.625rem] text-white">{currentRank.name}</span>
             </div>
             <StreakBadge days={currentStreak} />
           </div>
