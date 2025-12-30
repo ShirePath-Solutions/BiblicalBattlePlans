@@ -350,7 +350,7 @@ export function useStartPlan() {
         .insert({
           user_id: user.id,
           plan_id: planId,
-          start_date: startDate || new Date().toISOString().split('T')[0],
+          start_date: startDate || getLocalDate(),
           current_day: 1,
           list_positions: listPositions,
           is_completed: false,
