@@ -284,12 +284,14 @@ export function PlanDetail() {
             </div>
           ) : (
             <div className="w-full space-y-4">
-              <Input
-                label="Start Date"
-                type="date"
-                value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
-              />
+              <div className="max-w-xs">
+                <Input
+                  label="Start Date"
+                  type="date"
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                />
+              </div>
               <Button
                 variant="primary"
                 className="w-full"
