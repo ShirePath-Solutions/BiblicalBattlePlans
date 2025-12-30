@@ -369,32 +369,25 @@ export function Profile() {
       {/* Campaign History */}
       <CampaignHistory />
 
-      {/* Danger Zone */}
+      {/* Account Management */}
       <Card noPadding>
-        <div className="bg-gradient-to-r from-danger/20 to-transparent px-4 py-3 border-b border-danger/30">
-          <div className="font-pixel text-[0.625rem] text-danger">
-            DANGER ZONE
+        <div className="bg-gradient-to-r from-parchment-dark/40 to-transparent px-4 py-3 border-b border-border-subtle">
+          <div className="font-pixel text-[0.625rem] text-ink">
+            ACCOUNT
           </div>
         </div>
         <div className="p-4">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <div>
-              <p className="font-pixel text-[0.625rem] text-ink mb-1">
-                DELETE ACCOUNT
-              </p>
-              <p className="font-pixel text-[0.5rem] text-ink-muted">
-                Permanently delete your account and all associated data.
-                This action cannot be undone.
-              </p>
-            </div>
-            <Button
-              variant="danger"
-              size="sm"
-              leftIcon={<Trash2 className="w-3 h-3" />}
+          <div className="flex items-center justify-between">
+            <p className="font-pixel text-[0.5rem] text-ink-muted">
+              Delete your account and all data
+            </p>
+            <button
               onClick={() => setShowDeleteModal(true)}
+              className="font-pixel text-[0.5rem] text-danger hover:text-danger-dark hover:underline transition-colors inline-flex items-center gap-1.5"
             >
-              DELETE
-            </Button>
+              <Trash2 className="w-3 h-3" />
+              Delete Account
+            </button>
           </div>
         </div>
       </Card>

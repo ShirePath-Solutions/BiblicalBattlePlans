@@ -289,7 +289,7 @@ export function ActivePlan() {
               <h1 className="font-pixel text-sm text-ink">
                 {plan.name.toUpperCase()}
               </h1>
-              <p className="font-pixel text-[0.5rem] text-ink-muted mt-2">
+              <p className="font-pixel text-[0.625rem] text-ink-muted mt-2">
                 {isCyclingPlan ? 'Continuous Reading Plan' :
                  isFreeReading ? 'Free Reading - Log as you go' :
                  `Day ${daysOnPlan} on this quest`}
@@ -373,7 +373,7 @@ export function ActivePlan() {
             <h2 className="font-pixel text-[0.625rem] text-ink">
               {isCyclingPlan ? 'CONTINUE READING' : "TODAY'S MISSION"}
             </h2>
-            <p className="font-pixel text-[0.5rem] text-ink-muted mt-1">
+            <p className="font-pixel text-[0.625rem] text-ink-muted mt-1">
               {isCyclingPlan
                 ? 'Mark chapters as you read. Each list progresses independently.'
                 : 'Complete all readings to conquer this day'}

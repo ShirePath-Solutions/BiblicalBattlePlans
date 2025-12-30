@@ -45,7 +45,7 @@ export function PlanCard({ plan, userPlan, showStartButton = true }: PlanCardPro
       </CardHeader>
 
       <CardContent className="flex-1">
-        <p className="font-pixel text-[0.5rem] text-ink-muted mb-4 line-clamp-3 leading-relaxed">
+        <p className="font-pixel text-[0.625rem] text-ink-muted mb-4 line-clamp-3 leading-relaxed">
           {plan.description}
         </p>
 
