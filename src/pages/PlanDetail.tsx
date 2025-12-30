@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { Infinity, ChevronLeft, ChevronRight, ChevronDown, ChevronUp } from 'lucide-react'
 import { toast } from 'sonner'
-import { useReadingPlan, useStartPlan, useUserPlans, getTodaysReading } from '../hooks/usePlans'
+import { useReadingPlan, useStartPlan, useUserPlans, getTodaysReading, getLocalDate } from '../hooks/usePlans'
 import { captureError } from '../lib/errorLogger'
 import { Card, CardHeader, CardContent, CardFooter, Button, Badge, LoadingSpinner, Input } from '../components/ui'
 import type { CyclingListsStructure } from '../types'
@@ -14,7 +14,7 @@ export function PlanDetail() {
   const { data: userPlans } = useUserPlans()
   const startPlan = useStartPlan()
 
-  const [startDate, setStartDate] = useState(new Date().toISOString().split('T')[0])
+  const [startDate, setStartDate] = useState(getLocalDate())
   const [previewDay, setPreviewDay] = useState(1)
   const [showSchedule, setShowSchedule] = useState(false)
 
