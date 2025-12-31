@@ -22,6 +22,15 @@ jobs:
         run: |
           echo "PR Title: $PR_TITLE"
           
+          # Check if PR title contains [skip-version]
+          if echo "$PR_TITLE" | grep -q "\[skip-version\]"; then
+            echo "skip_version=true" >> $GITHUB_OUTPUT
+            echo "⏭️  [skip-version] detected - no version bump will occur"
+            exit 0
+          fi
+          
+          echo "skip_version=false" >> $GITHUB_OUTPUT
+          
           # Initialize variables
           VALID=false
           BUMP_TYPE=""
@@ -72,8 +81,60 @@ jobs:
           echo "emoji=$EMOJI" >> $GITHUB_OUTPUT
           echo "color=$COLOR" >> $GITHUB_OUTPUT
 
+      - name: Post Skip Version Comment
+        if: steps.validate.outputs.skip_version == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const prTitle = '${{ github.event.pull_request.title }}';
+            
+            // Find existing comment
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+            
+            const botComment = comments.find(comment => 
+              comment.user.type === 'Bot' && 
+              comment.body.includes('Version Bump Preview')
+            );
+            
+            const body = `## ⏭️ Version Bump Skipped
+            
+            **PR Title:** \`${prTitle}\`
+            
+            This PR contains \`[skip-version]\` in the title, so **no version bump will occur** when this PR is merged.
+            
+            This is typically used for:
+            - Automated version bump PRs
+            - Documentation-only changes that don't warrant a version bump
+            - Internal changes that shouldn't trigger versioning
+            
+            ---
+            
+            If you want a version bump to occur, please remove \`[skip-version]\` from the PR title.`;
+            
+            if (botComment) {
+              // Update existing comment
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: botComment.id,
+                body: body
+              });
+            } else {
+              // Create new comment
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body: body
+              });
+            }
+
       - name: Get Current Version
-        if: steps.validate.outputs.valid == 'true'
+        if: steps.validate.outputs.valid == 'true' && steps.validate.outputs.skip_version != 'true'
         id: current-version
         run: |
           CURRENT_VERSION=$(node -p "require('./package.json').version")
@@ -81,7 +142,7 @@ jobs:
           echo "Current version: $CURRENT_VERSION"
 
       - name: Calculate New Version
-        if: steps.validate.outputs.valid == 'true'
+        if: steps.validate.outputs.valid == 'true' && steps.validate.outputs.skip_version != 'true'
         id: new-version
         env:
           CURRENT_VERSION: ${{ steps.current-version.outputs.current }}
@@ -111,7 +172,7 @@ jobs:
           echo "New version will be: $NEW_VERSION"
 
       - name: Post Success Comment
-        if: steps.validate.outputs.valid == 'true'
+        if: steps.validate.outputs.valid == 'true' && steps.validate.outputs.skip_version != 'true'
         uses: actions/github-script@v7
         with:
           script: |
@@ -277,7 +338,7 @@ jobs:
             }
 
       - name: Fail if Invalid
-        if: steps.validate.outputs.valid == 'false'
+        if: steps.validate.outputs.valid == 'false' && steps.validate.outputs.skip_version != 'true'
         run: |
           echo "::error::PR title does not follow conventional commit format"
           echo "::error::Please update the PR title to match the format: <type>: <description>"
@@ -285,7 +346,7 @@ jobs:
           exit 1
 
       - name: Add Status Check Label
-        if: steps.validate.outputs.valid == 'true'
+        if: steps.validate.outputs.valid == 'true' && steps.validate.outputs.skip_version != 'true'
         uses: actions/github-script@v7
         continue-on-error: true
         with:
