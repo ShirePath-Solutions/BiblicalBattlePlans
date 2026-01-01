@@ -87,6 +87,7 @@ export const persister = createSyncStoragePersister({
 
 // Cache version - increment this to invalidate all user caches on deploy
 // Changed: v2 - Fixed chapter counting for sectional/weekly plans
+// Changed: v3 - Improved persistent cache handling and visibility management to reduce stale data issues
 export const CACHE_BUSTER = 'v3'
 
 /**
