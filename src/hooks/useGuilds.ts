@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase'
 import { useAuth } from './useAuth'
-import type { Guild, GuildMember, GuildWithMembers, UserGuildMembership, Profile } from '../types'
+import type { Guild, GuildMember, GuildWithMembers, UserGuildMembership, Profile, ReadingPlan } from '../types'
 
 // Query keys
 export const guildKeys = {
@@ -68,7 +68,8 @@ export function useGuild(guildId: string) {
           members:guild_members(
             *,
             profile:profiles(id, username, display_name, avatar_url, current_streak, total_chapters_read)
-          )
+          ),
+          recommended_plan:reading_plans(*)
         `)
         .eq('id', guildId)
         .single()
@@ -78,7 +79,7 @@ export function useGuild(guildId: string) {
       // Sort members: admins first, then by streak
       const guild = data as GuildWithMembers & {
         members: (GuildMember & { profile: Profile })[]
-      }
+      } & { recommended_plan: ReadingPlan | null }
 
       guild.members.sort((a, b) => {
         // Admins first
@@ -321,6 +322,38 @@ export function useUpdateGuild() {
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: guildKeys.detail(data.id) })
+    },
+  })
+}
+
+/**
+ * Set recommended plan for guild (admin only)
+ */
+export function useSetGuildRecommendedPlan() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async ({
+      guildId,
+      planId,
+    }: {
+      guildId: string
+      planId: string | null
+    }) => {
+      const { data, error } = await (supabase
+        .from('guilds') as ReturnType<typeof supabase.from>)
+        .update({ recommended_plan_id: planId })
+        .eq('id', guildId)
+        .select()
+        .single()
+
+      if (error) throw error
+      return data as Guild
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: guildKeys.detail(data.id) })
+      // Also invalidate myGuilds so recommendation shows in guild list
+      queryClient.invalidateQueries({ queryKey: ['guilds', 'myGuilds'] })
     },
   })
 }

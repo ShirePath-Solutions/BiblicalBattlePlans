@@ -1,14 +1,30 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Users, Plus, UserPlus } from 'lucide-react'
 import { Card, CardContent, Button, LoadingSpinner } from '../components/ui'
-import { GuildCard, CreateGuildModal, JoinGuildModal } from '../components/guilds'
+import { GuildCard, CreateGuildModal, JoinGuildModal, GuildsIntroModal } from '../components/guilds'
 import { useMyGuilds } from '../hooks/useGuilds'
+
+const GUILDS_INTRO_KEY = 'hasSeenGuildsIntro'
 
 export function GuildHub() {
   const { data: memberships, isLoading, error } = useMyGuilds()
 
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [showJoinModal, setShowJoinModal] = useState(false)
+  const [showIntroModal, setShowIntroModal] = useState(false)
+
+  // Show intro modal on first visit to guilds page
+  useEffect(() => {
+    const hasSeenIntro = localStorage.getItem(GUILDS_INTRO_KEY)
+    if (!hasSeenIntro) {
+      setShowIntroModal(true)
+    }
+  }, [])
+
+  const handleIntroClose = () => {
+    setShowIntroModal(false)
+    localStorage.setItem(GUILDS_INTRO_KEY, 'true')
+  }
 
   if (error) {
     return (
@@ -115,6 +131,10 @@ export function GuildHub() {
       )}
 
       {/* Modals */}
+      <GuildsIntroModal
+        isOpen={showIntroModal}
+        onClose={handleIntroClose}
+      />
       <CreateGuildModal
         isOpen={showCreateModal}
         onClose={() => setShowCreateModal(false)}

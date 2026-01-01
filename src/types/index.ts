@@ -163,6 +163,7 @@ export interface Guild {
   is_public: boolean
   is_active: boolean
   member_count: number
+  recommended_plan_id: string | null
   created_at: string
 }
 
@@ -178,6 +179,7 @@ export interface GuildMember {
 
 export interface GuildWithMembers extends Guild {
   members: GuildMember[]
+  recommended_plan?: ReadingPlan // Joined data when fetching guild details
 }
 
 export interface UserGuildMembership extends GuildMember {

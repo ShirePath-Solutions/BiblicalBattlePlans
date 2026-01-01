@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom'
+import { Users } from 'lucide-react'
 import { Card, CardHeader, CardContent, CardFooter, Button, Badge } from '../ui'
 import type { ReadingPlan, UserPlan } from '../../types'
 import { calculatePlanProgress } from '../../hooks/usePlans'
@@ -7,6 +8,7 @@ interface PlanCardProps {
   plan: ReadingPlan
   userPlan?: UserPlan
   showStartButton?: boolean
+  recommendedByGuilds?: string[] // Guild names that recommend this plan
 }
 
 function getPlanTypeBadge(type: string) {
@@ -26,22 +28,35 @@ function getPlanTypeBadge(type: string) {
   }
 }
 
-export function PlanCard({ plan, userPlan, showStartButton = true }: PlanCardProps) {
+export function PlanCard({ plan, userPlan, showStartButton = true, recommendedByGuilds }: PlanCardProps) {
   const typeBadge = getPlanTypeBadge(plan.daily_structure.type)
   const progress = userPlan ? calculatePlanProgress(userPlan, plan) : 0
   const isActive = userPlan && !userPlan.is_completed
+  const hasRecommendations = recommendedByGuilds && recommendedByGuilds.length > 0
 
   return (
-    <Card className="h-full flex flex-col">
+    <Card className={`h-full flex flex-col ${hasRecommendations ? 'ring-2 ring-sage/50' : ''}`}>
       <CardHeader>
         <div className="flex items-start justify-between gap-2">
           <h3 className="font-pixel text-[0.625rem] text-ink leading-tight">
             {plan.name.toUpperCase()}
           </h3>
-          <Badge variant={typeBadge.variant} size="sm">
-            {typeBadge.label}
-          </Badge>
+          <div className="flex gap-1 flex-wrap justify-end">
+            <Badge variant={typeBadge.variant} size="sm">
+              {typeBadge.label}
+            </Badge>
+          </div>
         </div>
+        {hasRecommendations && (
+          <div className="mt-2">
+            <Badge variant="success" size="sm">
+              <Users className="w-3 h-3 mr-1" />
+              {recommendedByGuilds.length === 1
+                ? `BY ${recommendedByGuilds[0].toUpperCase()}`
+                : `BY ${recommendedByGuilds.length} GUILDS`}
+            </Badge>
+          </div>
+        )}
       </CardHeader>
 
       <CardContent className="flex-1">

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
-import { ChevronLeft, Users, Settings, UserPlus, LogOut, Crown, Trash2 } from 'lucide-react'
+import { ChevronLeft, Users, Settings, UserPlus, LogOut, Crown, Trash2, BookOpen, Play } from 'lucide-react'
 import { Card, CardContent, Button, Badge, LoadingSpinner } from '../components/ui'
 import {
   GuildMemberList,
@@ -12,6 +12,7 @@ import {
 } from '../components/guilds'
 import type { GuildTab } from '../components/guilds'
 import { useGuild, useMyGuildMembership, useLeaveGuild, useDeleteGuild } from '../hooks/useGuilds'
+import { useStartPlan, useUserPlans } from '../hooks/usePlans'
 import type { Profile } from '../types'
 
 export function Guild() {
@@ -22,6 +23,8 @@ export function Guild() {
   const membership = useMyGuildMembership(id || '')
   const leaveGuild = useLeaveGuild()
   const deleteGuild = useDeleteGuild()
+  const startPlan = useStartPlan()
+  const { data: userPlans } = useUserPlans()
 
   const [showInviteModal, setShowInviteModal] = useState(false)
   const [showSettingsModal, setShowSettingsModal] = useState(false)
@@ -29,6 +32,23 @@ export function Guild() {
 
   const isAdmin = membership?.role === 'admin'
   const isOnlyMember = guild?.members.length === 1
+
+  // Check if user is already on the recommended plan
+  const recommendedPlan = guild?.recommended_plan
+  const isOnRecommendedPlan = userPlans?.some(
+    (up) => up.plan_id === guild?.recommended_plan_id && !up.is_completed && !up.is_archived
+  )
+
+  const handleStartRecommendedPlan = async () => {
+    if (!recommendedPlan) return
+
+    try {
+      await startPlan.mutateAsync({ planId: recommendedPlan.id })
+      navigate('/dashboard')
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Failed to start plan')
+    }
+  }
 
   const handleLeave = async () => {
     if (!id) return
@@ -156,6 +176,61 @@ export function Guild() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Recommended Plan Card */}
+      {recommendedPlan && (
+        <Card className="border-sage bg-sage/5">
+          <CardContent>
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              <div className="flex items-start gap-3">
+                <div className="w-10 h-10 bg-sage/20 border-2 border-sage flex items-center justify-center flex-shrink-0">
+                  <BookOpen className="w-5 h-5 text-sage" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2 mb-1">
+                    <Badge variant="success" size="sm">RECOMMENDED QUEST</Badge>
+                  </div>
+                  <h3 className="font-pixel text-[0.75rem] text-ink mb-1">
+                    {recommendedPlan.name.toUpperCase()}
+                  </h3>
+                  {recommendedPlan.description && (
+                    <p className="font-pixel text-[0.5rem] text-ink-muted line-clamp-2">
+                      {recommendedPlan.description}
+                    </p>
+                  )}
+                  <p className="font-pixel text-[0.5rem] text-ink-muted mt-1">
+                    {recommendedPlan.duration_days} days
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex gap-2">
+                {isOnRecommendedPlan ? (
+                  <Badge variant="success">
+                    <Play className="w-3 h-3 mr-1" />
+                    IN PROGRESS
+                  </Badge>
+                ) : (
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    leftIcon={<Play className="w-4 h-4" />}
+                    onClick={handleStartRecommendedPlan}
+                    isLoading={startPlan.isPending}
+                  >
+                    START QUEST
+                  </Button>
+                )}
+                <Link to={`/plans/${recommendedPlan.id}`}>
+                  <Button variant="secondary" size="sm">
+                    VIEW DETAILS
+                  </Button>
+                </Link>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Tabbed Content Section */}
       <div className="sage-panel">
