@@ -46,8 +46,8 @@ export const queryClient = new QueryClient({
     },
     mutations: {
       retry: 1,
-      // Mutations should work when online to ensure data consistency
-      networkMode: 'online',
+      // Use 'always' so mutations are queued when offline and run when back online
+      networkMode: 'always',
     },
   },
 })
