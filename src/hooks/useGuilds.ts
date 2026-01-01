@@ -1,0 +1,488 @@
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { supabase } from '../lib/supabase'
+import { useAuth } from './useAuth'
+import type { Guild, GuildMember, GuildWithMembers, UserGuildMembership, Profile } from '../types'
+
+// Query keys
+export const guildKeys = {
+  all: ['guilds'] as const,
+  myGuilds: (userId: string) => [...guildKeys.all, 'myGuilds', userId] as const,
+  detail: (id: string) => [...guildKeys.all, 'detail', id] as const,
+  members: (guildId: string) => [...guildKeys.all, 'members', guildId] as const,
+  byInviteCode: (code: string) => [...guildKeys.all, 'byInviteCode', code] as const,
+}
+
+/**
+ * Get all guilds the current user is a member of
+ */
+export function useMyGuilds() {
+  const { user } = useAuth()
+
+  return useQuery({
+    queryKey: guildKeys.myGuilds(user?.id || ''),
+    queryFn: async () => {
+      if (!user) return []
+
+      const { data, error } = await supabase
+        .from('guild_members')
+        .select(`
+          *,
+          guild:guilds(*)
+        `)
+        .eq('user_id', user.id)
+        .order('joined_at', { ascending: false })
+
+      if (error) throw error
+      return data as UserGuildMembership[]
+    },
+    enabled: !!user,
+    staleTime: 30 * 1000, // 30 seconds
+    refetchOnWindowFocus: true,
+  })
+}
+
+/**
+ * Get a single guild with its members
+ */
+export function useGuild(guildId: string) {
+  return useQuery({
+    queryKey: guildKeys.detail(guildId),
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('guilds')
+        .select(`
+          *,
+          members:guild_members(
+            *,
+            profile:profiles(id, username, display_name, avatar_url, current_streak, total_chapters_read)
+          )
+        `)
+        .eq('id', guildId)
+        .single()
+
+      if (error) throw error
+
+      // Sort members: admins first, then by streak
+      const guild = data as GuildWithMembers & {
+        members: (GuildMember & { profile: Profile })[]
+      }
+
+      guild.members.sort((a, b) => {
+        // Admins first
+        if (a.role === 'admin' && b.role !== 'admin') return -1
+        if (b.role === 'admin' && a.role !== 'admin') return 1
+        // Then by streak
+        return (b.profile?.current_streak || 0) - (a.profile?.current_streak || 0)
+      })
+
+      return guild
+    },
+    enabled: !!guildId,
+    staleTime: 30 * 1000, // 30 seconds
+    refetchOnWindowFocus: true,
+  })
+}
+
+/**
+ * Get a guild by its invite code (for preview before joining)
+ */
+export function useGuildByInviteCode(code: string) {
+  return useQuery({
+    queryKey: guildKeys.byInviteCode(code.toUpperCase()),
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('guilds')
+        .select('*')
+        .eq('invite_code', code.toUpperCase())
+        .single()
+
+      if (error) throw error
+      return data as Guild
+    },
+    enabled: !!code && code.length >= 6,
+  })
+}
+
+/**
+ * Check if current user is an admin of a guild
+ */
+export function useIsGuildAdmin(guildId: string): boolean {
+  const { user } = useAuth()
+  const { data: guild } = useGuild(guildId)
+
+  if (!user || !guild) return false
+  return guild.members.some((m) => m.user_id === user.id && m.role === 'admin')
+}
+
+/**
+ * Get the current user's membership in a guild
+ */
+export function useMyGuildMembership(guildId: string) {
+  const { user } = useAuth()
+  const { data: guild } = useGuild(guildId)
+
+  if (!user || !guild) return null
+  return guild.members.find((m) => m.user_id === user.id) || null
+}
+
+// ============================================
+// MUTATIONS
+// ============================================
+
+/**
+ * Create a new guild (always private/invite-only)
+ */
+export function useCreateGuild() {
+  const queryClient = useQueryClient()
+  const { user } = useAuth()
+
+  return useMutation({
+    mutationFn: async ({
+      name,
+      description,
+    }: {
+      name: string
+      description?: string
+    }) => {
+      if (!user) throw new Error('Not authenticated')
+
+      const { data, error } = await (supabase
+        .from('guilds') as ReturnType<typeof supabase.from>)
+        .insert({
+          name,
+          description: description || null,
+          type: 'custom',
+          created_by: user.id,
+          is_public: false, // All guilds are invite-only
+        })
+        .select()
+        .single()
+
+      if (error) throw error
+      return data as Guild
+    },
+    onSuccess: () => {
+      if (user) {
+        queryClient.invalidateQueries({ queryKey: guildKeys.myGuilds(user.id) })
+      }
+    },
+  })
+}
+
+/**
+ * Join a guild via invite code
+ */
+export function useJoinGuild() {
+  const queryClient = useQueryClient()
+  const { user } = useAuth()
+
+  return useMutation({
+    mutationFn: async (inviteCode: string) => {
+      if (!user) throw new Error('Not authenticated')
+
+      // Find the guild by invite code
+      const { data: guild, error: findError } = await (supabase
+        .from('guilds') as ReturnType<typeof supabase.from>)
+        .select('id, name')
+        .eq('invite_code', inviteCode.toUpperCase())
+        .single()
+
+      if (findError || !guild) {
+        throw new Error('Guild not found. Please check the invite code.')
+      }
+
+      const guildData = guild as { id: string; name: string }
+
+      // Check if already a member
+      const { data: existing } = await (supabase
+        .from('guild_members') as ReturnType<typeof supabase.from>)
+        .select('id')
+        .eq('guild_id', guildData.id)
+        .eq('user_id', user.id)
+        .maybeSingle()
+
+      if (existing) {
+        throw new Error('You are already a member of this guild.')
+      }
+
+      // Join the guild as a member
+      const { error: joinError } = await (supabase
+        .from('guild_members') as ReturnType<typeof supabase.from>)
+        .insert({
+          guild_id: guildData.id,
+          user_id: user.id,
+          role: 'member',
+        })
+
+      if (joinError) throw joinError
+
+      return { guildId: guildData.id, guildName: guildData.name }
+    },
+    onSuccess: (data) => {
+      if (user) {
+        queryClient.invalidateQueries({ queryKey: guildKeys.myGuilds(user.id) })
+        queryClient.invalidateQueries({ queryKey: guildKeys.detail(data.guildId) })
+      }
+    },
+  })
+}
+
+/**
+ * Leave a guild
+ */
+export function useLeaveGuild() {
+  const queryClient = useQueryClient()
+  const { user } = useAuth()
+
+  return useMutation({
+    mutationFn: async (guildId: string) => {
+      if (!user) throw new Error('Not authenticated')
+
+      // Check if user is the last admin
+      const { data: members } = await (supabase
+        .from('guild_members') as ReturnType<typeof supabase.from>)
+        .select('user_id, role')
+        .eq('guild_id', guildId)
+
+      const memberList = (members || []) as { user_id: string; role: string }[]
+      const admins = memberList.filter((m) => m.role === 'admin')
+      const isLastAdmin = admins.length === 1 && admins[0].user_id === user.id
+
+      if (isLastAdmin && memberList.length > 1) {
+        throw new Error('You must promote another member to admin before leaving.')
+      }
+
+      // If only member, must delete the guild instead
+      if (memberList.length === 1) {
+        throw new Error('You are the only member. Delete the guild instead of leaving.')
+      }
+
+      const { error } = await (supabase
+        .from('guild_members') as ReturnType<typeof supabase.from>)
+        .delete()
+        .eq('guild_id', guildId)
+        .eq('user_id', user.id)
+
+      if (error) throw error
+
+      return { guildId }
+    },
+    onSuccess: (data) => {
+      if (user) {
+        queryClient.invalidateQueries({ queryKey: guildKeys.myGuilds(user.id) })
+        queryClient.invalidateQueries({ queryKey: guildKeys.detail(data.guildId) })
+      }
+    },
+  })
+}
+
+/**
+ * Update guild settings (admin only)
+ */
+export function useUpdateGuild() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async ({
+      guildId,
+      name,
+      description,
+    }: {
+      guildId: string
+      name?: string
+      description?: string
+    }) => {
+      const updates: Record<string, unknown> = {}
+      if (name !== undefined) updates.name = name
+      if (description !== undefined) updates.description = description
+
+      const { data, error } = await (supabase
+        .from('guilds') as ReturnType<typeof supabase.from>)
+        .update(updates)
+        .eq('id', guildId)
+        .select()
+        .single()
+
+      if (error) throw error
+      return data as Guild
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: guildKeys.detail(data.id) })
+    },
+  })
+}
+
+/**
+ * Delete a guild (admin only, must be last member)
+ */
+export function useDeleteGuild() {
+  const queryClient = useQueryClient()
+  const { user } = useAuth()
+
+  return useMutation({
+    mutationFn: async (guildId: string) => {
+      if (!user) throw new Error('Not authenticated')
+
+      // Verify user is admin and only member
+      const { data: members } = await (supabase
+        .from('guild_members') as ReturnType<typeof supabase.from>)
+        .select('user_id, role')
+        .eq('guild_id', guildId)
+
+      const memberList = (members || []) as { user_id: string; role: string }[]
+      const isAdmin = memberList.some((m) => m.user_id === user.id && m.role === 'admin')
+
+      if (!isAdmin) {
+        throw new Error('Only admins can delete guilds.')
+      }
+
+      if (memberList.length > 1) {
+        throw new Error('Remove all other members before deleting the guild.')
+      }
+
+      const { error } = await (supabase
+        .from('guilds') as ReturnType<typeof supabase.from>)
+        .delete()
+        .eq('id', guildId)
+
+      if (error) throw error
+      return { guildId }
+    },
+    onSuccess: () => {
+      if (user) {
+        queryClient.invalidateQueries({ queryKey: guildKeys.myGuilds(user.id) })
+      }
+    },
+  })
+}
+
+/**
+ * Remove a member from guild (admin only)
+ */
+export function useRemoveMember() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async ({
+      guildId,
+      userId,
+    }: {
+      guildId: string
+      userId: string
+    }) => {
+      const { error } = await (supabase
+        .from('guild_members') as ReturnType<typeof supabase.from>)
+        .delete()
+        .eq('guild_id', guildId)
+        .eq('user_id', userId)
+
+      if (error) throw error
+      return { guildId, userId }
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: guildKeys.detail(data.guildId) })
+    },
+  })
+}
+
+/**
+ * Promote a member to admin (admin only)
+ */
+export function usePromoteMember() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async ({
+      guildId,
+      userId,
+    }: {
+      guildId: string
+      userId: string
+    }) => {
+      const { error } = await (supabase
+        .from('guild_members') as ReturnType<typeof supabase.from>)
+        .update({ role: 'admin' })
+        .eq('guild_id', guildId)
+        .eq('user_id', userId)
+
+      if (error) throw error
+      return { guildId, userId }
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: guildKeys.detail(data.guildId) })
+    },
+  })
+}
+
+/**
+ * Demote an admin to member (admin only)
+ */
+export function useDemoteMember() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async ({
+      guildId,
+      userId,
+    }: {
+      guildId: string
+      userId: string
+    }) => {
+      // Check we're not removing the last admin
+      const { data: members } = await (supabase
+        .from('guild_members') as ReturnType<typeof supabase.from>)
+        .select('user_id, role')
+        .eq('guild_id', guildId)
+        .eq('role', 'admin')
+
+      if ((members?.length || 0) <= 1) {
+        throw new Error('Cannot demote the last admin.')
+      }
+
+      const { error } = await (supabase
+        .from('guild_members') as ReturnType<typeof supabase.from>)
+        .update({ role: 'member' })
+        .eq('guild_id', guildId)
+        .eq('user_id', userId)
+
+      if (error) throw error
+      return { guildId, userId }
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: guildKeys.detail(data.guildId) })
+    },
+  })
+}
+
+/**
+ * Regenerate invite code (admin only)
+ */
+export function useRegenerateInviteCode() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async (guildId: string) => {
+      // Set invite_code to null so the database trigger generates a new one
+      const { data, error } = await (supabase
+        .from('guilds') as ReturnType<typeof supabase.from>)
+        .update({ invite_code: null })
+        .eq('id', guildId)
+        .select()
+        .single()
+
+      if (error) throw error
+      return data as Guild
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: guildKeys.detail(data.id) })
+    },
+  })
+}
+
+/**
+ * Get the shareable invite link for a guild
+ */
+export function getInviteLink(inviteCode: string): string {
+  const baseUrl = window.location.origin
+  return `${baseUrl}/guild/join/${inviteCode}`
+}

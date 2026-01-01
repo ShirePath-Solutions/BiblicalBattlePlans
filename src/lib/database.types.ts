@@ -134,14 +134,17 @@ export interface Database {
           updated_at?: string
         }
       }
-      groups: {
+      guilds: {
         Row: {
           id: string
           name: string
           description: string | null
           type: string
           created_by: string
+          invite_code: string
+          is_public: boolean
           is_active: boolean
+          member_count: number
           created_at: string
         }
         Insert: {
@@ -150,7 +153,10 @@ export interface Database {
           description?: string | null
           type?: string
           created_by: string
+          invite_code?: string | null
+          is_public?: boolean
           is_active?: boolean
+          member_count?: number
           created_at?: string
         }
         Update: {
@@ -159,27 +165,33 @@ export interface Database {
           description?: string | null
           type?: string
           created_by?: string
+          invite_code?: string | null
+          is_public?: boolean
           is_active?: boolean
+          member_count?: number
           created_at?: string
         }
       }
-      group_members: {
+      guild_members: {
         Row: {
           id: string
-          group_id: string
+          guild_id: string
           user_id: string
+          role: string
           joined_at: string
         }
         Insert: {
           id?: string
-          group_id: string
+          guild_id: string
           user_id: string
+          role?: string
           joined_at?: string
         }
         Update: {
           id?: string
-          group_id?: string
+          guild_id?: string
           user_id?: string
+          role?: string
           joined_at?: string
         }
       }

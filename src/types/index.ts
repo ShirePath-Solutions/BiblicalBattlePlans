@@ -149,25 +149,39 @@ export interface ListProgress {
   cycles_completed: number
 }
 
-// Group Types (for future use)
+// Guild Types
 
-export interface Group {
+export type GuildRole = 'admin' | 'member'
+
+export interface Guild {
   id: string
   name: string
   description: string | null
   type: 'custom' | 'national' | 'church'
   created_by: string
+  invite_code: string
+  is_public: boolean
   is_active: boolean
+  member_count: number
   created_at: string
 }
 
-export interface GroupMember {
+export interface GuildMember {
   id: string
-  group_id: string
+  guild_id: string
   user_id: string
+  role: GuildRole
   joined_at: string
   // Joined data
   profile?: Profile
+}
+
+export interface GuildWithMembers extends Guild {
+  members: GuildMember[]
+}
+
+export interface UserGuildMembership extends GuildMember {
+  guild: Guild
 }
 
 // Stats Types
