@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import { supabase } from '../lib/supabase'
 import { setSentryUser } from '../lib/sentry'
 import { captureError } from '../lib/errorLogger'
+import { clearUserCache } from '../lib/queryClient'
 import type { User, Session } from '@supabase/supabase-js'
 import type { Profile } from '../types'
 
@@ -102,6 +103,9 @@ export const useAuth = create<AuthStore>((set, get) => ({
             isRecoveryMode: true,
           })
         } else if (event === 'SIGNED_IN' && session?.user) {
+          // Clear cached data from previous user/session to prevent stale data
+          clearUserCache()
+          
           // Sync username from user metadata to profile if not set
           const metadata = session.user.user_metadata
           
@@ -144,6 +148,9 @@ export const useAuth = create<AuthStore>((set, get) => ({
             isRecoveryMode: false,
           })
         } else if (event === 'SIGNED_OUT') {
+          // Clear cached user data to prevent data leakage between accounts
+          clearUserCache()
+          
           setSentryUser(null)
           set({
             user: null,
@@ -180,6 +187,9 @@ export const useAuth = create<AuthStore>((set, get) => ({
 
     // Immediately update auth state instead of waiting for onAuthStateChange
     if (data.session?.user) {
+      // Clear cached data from previous user/session
+      clearUserCache()
+      
       const profile = await fetchProfile(data.session.user.id)
       set({
         user: data.session.user,
@@ -237,6 +247,9 @@ export const useAuth = create<AuthStore>((set, get) => ({
   },
 
   signOut: async () => {
+    // Clear cached user data before signing out
+    clearUserCache()
+    
     // Clear state immediately - no loading state needed for sign out
     set({
       user: null,
