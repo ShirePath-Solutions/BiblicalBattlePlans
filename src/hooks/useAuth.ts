@@ -148,9 +148,7 @@ export const useAuth = create<AuthStore>((set, get) => ({
             isRecoveryMode: false,
           })
         } else if (event === 'SIGNED_OUT') {
-          // Clear cached user data to prevent data leakage between accounts
-          clearUserCache()
-          
+          // Reset auth state on sign-out; cache is cleared in the primary signOut flow
           setSentryUser(null)
           set({
             user: null,
