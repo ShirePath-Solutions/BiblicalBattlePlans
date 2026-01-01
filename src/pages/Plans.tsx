@@ -1,4 +1,5 @@
 import { useReadingPlans, useUserPlans } from '../hooks/usePlans'
+import { useGuildRecommendations } from '../hooks/useGuildRecommendations'
 import { PlanCard, ArchivedPlanCard } from '../components/plans'
 import { LoadingSpinner, Card, CardContent } from '../components/ui'
 import { queryClient } from '../lib/queryClient'
@@ -6,6 +7,7 @@ import { queryClient } from '../lib/queryClient'
 export function Plans() {
   const { data: plans, isLoading: plansLoading, error: plansError } = useReadingPlans()
   const { data: userPlans, isLoading: userPlansLoading, error: userPlansError } = useUserPlans()
+  const { getRecommendingGuilds } = useGuildRecommendations()
 
   const isLoading = plansLoading || userPlansLoading
   const error = plansError || userPlansError
@@ -69,7 +71,11 @@ export function Plans() {
         {availablePlans.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {availablePlans.map((plan) => (
-              <PlanCard key={plan.id} plan={plan} />
+              <PlanCard
+                key={plan.id}
+                plan={plan}
+                recommendedByGuilds={getRecommendingGuilds(plan.id)}
+              />
             ))}
           </div>
         ) : (

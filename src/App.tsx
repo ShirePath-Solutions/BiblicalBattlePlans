@@ -6,7 +6,7 @@ import { Toaster } from 'sonner'
 import { useAuth } from './hooks/useAuth'
 import { ProtectedRoute } from './components/auth'
 import { Layout } from './components/Layout'
-import { Landing, Login, Signup, ForgotPassword, ResetPassword, Dashboard, Plans, PlanDetail, ActivePlan, Profile, Acknowledgements, About, Feedback } from './pages'
+import { Landing, Login, Signup, ForgotPassword, ResetPassword, Dashboard, Plans, PlanDetail, ActivePlan, Profile, Acknowledgements, About, Feedback, GuildHub, Guild, GuildJoin } from './pages'
 import { LoadingOverlay } from './components/ui'
 
 // Scroll to top on route change
@@ -88,6 +88,9 @@ function App() {
           <Route path="/plans" element={<Plans />} />
           <Route path="/plans/:id" element={<PlanDetail />} />
           <Route path="/campaign/:id" element={<ActivePlan />} />
+          <Route path="/guild" element={<GuildHub />} />
+          <Route path="/guild/:id" element={<Guild />} />
+          <Route path="/guild/join/:code" element={<GuildJoin />} />
           <Route path="/profile" element={<Profile />} />
           <Route path="/acknowledgements" element={<Acknowledgements />} />
           <Route path="/feedback" element={<Feedback />} />

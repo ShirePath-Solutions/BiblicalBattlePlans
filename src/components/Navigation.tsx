@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom'
-import { Home, Shield, MessageSquarePlus, type LucideIcon } from 'lucide-react'
+import { Home, Shield, MessageSquarePlus, Users, type LucideIcon } from 'lucide-react'
 
 interface NavItem {
   path: string
@@ -10,6 +10,7 @@ interface NavItem {
 // Removed QUESTS from nav - users access it via "NEW QUEST" button
 const navItems: NavItem[] = [
   { path: '/dashboard', label: 'HOME', icon: Home },
+  { path: '/guild', label: 'GUILD', icon: Users },
   { path: '/profile', label: 'HERO', icon: Shield },
   { path: '/feedback', label: 'FEEDBACK', icon: MessageSquarePlus },
 ]

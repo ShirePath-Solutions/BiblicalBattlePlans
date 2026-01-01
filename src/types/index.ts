@@ -149,25 +149,90 @@ export interface ListProgress {
   cycles_completed: number
 }
 
-// Group Types (for future use)
+// Guild Types
 
-export interface Group {
+export type GuildRole = 'admin' | 'member'
+
+export interface Guild {
   id: string
   name: string
   description: string | null
   type: 'custom' | 'national' | 'church'
   created_by: string
+  invite_code: string
+  is_public: boolean
   is_active: boolean
+  member_count: number
+  recommended_plan_id: string | null
   created_at: string
 }
 
-export interface GroupMember {
+export interface GuildMember {
   id: string
-  group_id: string
+  guild_id: string
   user_id: string
+  role: GuildRole
   joined_at: string
   // Joined data
   profile?: Profile
+}
+
+export interface GuildWithMembers extends Guild {
+  members: GuildMember[]
+  recommended_plan?: ReadingPlan // Joined data when fetching guild details
+}
+
+export interface UserGuildMembership extends GuildMember {
+  guild: Guild
+}
+
+// Guild Activity Types
+
+export type GuildActivityType =
+  | 'reading_completed'
+  | 'streak_milestone'
+  | 'rank_achieved'
+  | 'member_joined'
+  | 'plan_started'
+  | 'plan_completed'
+
+export interface GuildActivityMetadata {
+  plan_name?: string
+  day_number?: number
+  chapters_read?: number
+  date?: string
+  streak_days?: number
+  rank?: string
+  previous_rank?: string
+  total_days?: number
+}
+
+export interface GuildActivity {
+  id: string
+  guild_id: string
+  user_id: string
+  activity_type: GuildActivityType
+  metadata: GuildActivityMetadata
+  created_at: string
+  // Joined data
+  profile?: Profile
+}
+
+// Guild Leaderboard Types
+
+export type LeaderboardSortBy = 'streak' | 'chapters_week' | 'chapters_month' | 'chapters_all'
+
+export interface LeaderboardEntry {
+  user_id: string
+  rank: number
+  display_name: string
+  avatar_url: string | null
+  current_streak: number
+  streak_rank: string // RECRUIT, SOLDIER, WARRIOR, VETERAN, LEGENDARY
+  chapters_this_week: number
+  chapters_this_month: number
+  total_chapters_read: number
+  is_current_user: boolean
 }
 
 // Stats Types
