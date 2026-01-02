@@ -52,7 +52,6 @@ export function useMyGuilds() {
     },
     enabled: !!user && isInitialized,
     staleTime: 30 * 1000, // 30 seconds
-    refetchOnWindowFocus: false, // Disabled - page reloads on tab switch anyway
   })
 }
 
@@ -63,18 +62,21 @@ export function useGuild(guildId: string) {
   return useQuery({
     queryKey: guildKeys.detail(guildId),
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('guilds')
-        .select(`
-          *,
-          members:guild_members(
+      // Using withTimeout to prevent hanging promises after tab suspension
+      const { data, error } = await withTimeout(() =>
+        supabase
+          .from('guilds')
+          .select(`
             *,
-            profile:profiles(id, username, display_name, avatar_url, current_streak, total_chapters_read)
-          ),
-          recommended_plan:reading_plans(*)
-        `)
-        .eq('id', guildId)
-        .single()
+            members:guild_members(
+              *,
+              profile:profiles(id, username, display_name, avatar_url, current_streak, total_chapters_read)
+            ),
+            recommended_plan:reading_plans(*)
+          `)
+          .eq('id', guildId)
+          .single()
+      )
 
       if (error) throw error
 
@@ -95,7 +97,6 @@ export function useGuild(guildId: string) {
     },
     enabled: !!guildId,
     staleTime: 30 * 1000, // 30 seconds
-    refetchOnWindowFocus: true,
   })
 }
 
@@ -107,10 +108,14 @@ export function useGuildByInviteCode(code: string) {
   return useQuery({
     queryKey: guildKeys.byInviteCode(code.toUpperCase()),
     queryFn: async () => {
+      // Using withTimeout to prevent hanging promises after tab suspension
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data, error } = await (supabase.rpc as any)('get_guild_by_invite_code', {
-        p_invite_code: code,
-      })
+      const rpcResult = await withTimeout(() =>
+        (supabase.rpc as any)('get_guild_by_invite_code', {
+          p_invite_code: code,
+        })
+      )
+      const { data, error } = rpcResult as { data: unknown; error: Error | null }
 
       if (error) throw error
 
@@ -123,11 +128,11 @@ export function useGuildByInviteCode(code: string) {
         created_at: string
       }
 
-      const result = data as GuildPreviewRow[] | null
-      if (!result || result.length === 0) throw new Error('Guild not found')
+      const rows = data as GuildPreviewRow[] | null
+      if (!rows || rows.length === 0) throw new Error('Guild not found')
 
       // Return as Guild type (some fields won't be present but that's ok for preview)
-      return result[0] as unknown as Guild
+      return rows[0] as unknown as Guild
     },
     enabled: !!code && code.length >= 6,
   })
