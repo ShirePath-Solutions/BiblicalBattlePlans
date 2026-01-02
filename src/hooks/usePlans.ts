@@ -591,11 +591,14 @@ export function useMarkChapterRead() {
       const today = getLocalDate()
       queryClient.invalidateQueries({ queryKey: planKeys.dailyProgress(variables.userPlanId, today) })
       queryClient.invalidateQueries({ queryKey: planKeys.userPlan(variables.userPlanId) })
+      // Also invalidate the day_number-based progress queries (used by ActivePlan and Dashboard)
+      queryClient.invalidateQueries({ queryKey: ['progressForPlanDay', variables.userPlanId] })
       if (user) {
         queryClient.invalidateQueries({ queryKey: planKeys.userPlans(user.id) })
         queryClient.invalidateQueries({ queryKey: planKeys.todaysTotalProgress(user.id, today) })
         queryClient.invalidateQueries({ queryKey: ['stats', user.id] })
         queryClient.invalidateQueries({ queryKey: ['allTodayProgress', user.id, today] })
+        queryClient.invalidateQueries({ queryKey: ['progressByDayNumber', user.id] })
       }
     },
   })
@@ -919,12 +922,15 @@ export function useMarkSectionComplete() {
       queryClient.invalidateQueries({
         queryKey: planKeys.dailyProgress(variables.userPlanId, today),
       })
+      // Also invalidate the day_number-based progress queries (used by ActivePlan and Dashboard)
+      queryClient.invalidateQueries({ queryKey: ['progressForPlanDay', variables.userPlanId] })
 
       // Always invalidate stats, allTodayProgress, and todaysTotalProgress when sections are marked
       if (user) {
         queryClient.invalidateQueries({ queryKey: ['stats', user.id] })
         queryClient.invalidateQueries({ queryKey: ['allTodayProgress', user.id, today] })
         queryClient.invalidateQueries({ queryKey: planKeys.todaysTotalProgress(user.id, today) })
+        queryClient.invalidateQueries({ queryKey: ['progressByDayNumber', user.id] })
       }
 
       if (data.is_complete && user) {
