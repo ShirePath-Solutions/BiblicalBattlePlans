@@ -509,8 +509,8 @@ async function handleDuplicateKeyAndUpdate(
   sectionId: string,
   isCompleteCalculator?: (sections: string[]) => boolean
 ): Promise<DailyProgress | null> {
-  // Check if this is a duplicate key error
-  if (insertError?.code !== '23505' && !insertError?.message?.includes('duplicate key')) {
+  // Check if this is a duplicate key error (PostgreSQL unique_violation)
+  if (insertError?.code !== '23505') {
     return null // Not a duplicate key error
   }
 
