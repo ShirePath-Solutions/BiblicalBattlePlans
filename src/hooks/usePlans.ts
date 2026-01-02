@@ -499,7 +499,8 @@ function toggleSection(sections: string[], sectionId: string): string[] {
 /**
  * Helper to handle duplicate key errors when inserting daily_progress.
  * If insert fails due to duplicate key, fetches existing record and updates it.
- * This handles race conditions where progress query timed out but record exists.
+ * This handles race conditions where a record already exists (e.g. a prior
+ * progress query timed out, or two concurrent requests both attempted inserts).
  */
 async function handleDuplicateKeyAndUpdate(
   insertError: { code?: string; message?: string } | null,
