@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { supabase } from '../lib/supabase'
+import { supabase, withTimeout } from '../lib/supabase'
 import { useAuth } from './useAuth'
 import type { UserStats } from '../types'
 
@@ -32,17 +32,24 @@ export function useStats() {
       }
 
       // Fetch fresh profile stats from database (updated by triggers)
-      const { data: profileData } = await (supabase
-        .from('profiles') as ReturnType<typeof supabase.from>)
-        .select('current_streak, longest_streak, total_chapters_read, total_days_reading, streak_shields, last_shield_used_date')
-        .eq('id', user.id)
-        .single()
+      // Using withTimeout to prevent hanging promises after tab suspension
+      const profileResult = await withTimeout(() =>
+        supabase
+          .from('profiles')
+          .select('current_streak, longest_streak, total_chapters_read, total_days_reading, streak_shields, last_shield_used_date')
+          .eq('id', user.id)
+          .single()
+      )
+      const profileData = profileResult.data
 
       // Count active/completed plans
-      const { data: userPlans } = await (supabase
-        .from('user_plans') as ReturnType<typeof supabase.from>)
-        .select('id, is_completed, is_archived')
-        .eq('user_id', user.id)
+      const plansResult = await withTimeout(() =>
+        supabase
+          .from('user_plans')
+          .select('id, is_completed, is_archived')
+          .eq('user_id', user.id)
+      )
+      const userPlans = plansResult.data
 
       const plans = (userPlans || []) as { id: string; is_completed: boolean; is_archived: boolean }[]
       const plansActive = plans.filter((p) => !p.is_completed && !p.is_archived).length

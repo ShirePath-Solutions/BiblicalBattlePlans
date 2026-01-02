@@ -10,16 +10,19 @@ import { Landing, Login, Signup, ForgotPassword, ResetPassword, Dashboard, Plans
 import { LoadingOverlay } from './components/ui'
 
 /**
- * Handle tab visibility changes to prevent Supabase client corruption.
+ * Handle tab visibility changes by reloading the page.
  *
  * Issue: Supabase JS client promises hang after browser tab is suspended/backgrounded.
- * HTTP requests complete successfully but the JS promise never resolves due to
- * internal client state corruption from browser throttling.
+ * The HTTP requests complete but the JS promises never resolve due to internal client
+ * state corruption from browser throttling.
  *
- * The ONLY reliable fix is a full page reload to get a fresh Supabase client.
+ * This happens almost immediately when the tab is hidden - even 300ms is enough for
+ * the browser to start throttling and corrupt the client state. The ONLY reliable
+ * fix is a full page reload to get a fresh Supabase client.
+ *
  * See: https://github.com/supabase/auth-js/issues/1594
  */
-function useTabVisibilityHandler() {
+function useTabRecoveryHandler() {
   const hiddenAtRef = useRef<number | null>(null)
 
   useEffect(() => {
@@ -30,8 +33,8 @@ function useTabVisibilityHandler() {
         const hiddenDuration = Date.now() - hiddenAtRef.current
         hiddenAtRef.current = null
 
-        // Reload on any meaningful tab switch to get fresh Supabase client
-        // Even very short switches (< 1 second) can corrupt the client
+        // If hidden for more than 300ms, reload the page
+        // Browser throttling starts quickly and corrupts the Supabase client
         if (hiddenDuration > 300) {
           window.location.reload()
         }
@@ -68,8 +71,8 @@ function ScrollToTop() {
 function App() {
   const { initialize, isInitialized, user } = useAuth()
 
-  // Handle tab visibility changes to prevent Supabase client corruption
-  useTabVisibilityHandler()
+  // Handle tab visibility changes with tiered recovery strategy
+  useTabRecoveryHandler()
 
   useEffect(() => {
     initialize()

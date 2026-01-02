@@ -55,11 +55,14 @@ export function useReadingPlans() {
   return useQuery({
     queryKey: planKeys.list(),
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('reading_plans')
-        .select('*')
-        .eq('is_active', true)
-        .order('name')
+      // Using withTimeout to prevent hanging promises after tab suspension
+      const { data, error } = await withTimeout(() =>
+        supabase
+          .from('reading_plans')
+          .select('*')
+          .eq('is_active', true)
+          .order('name')
+      )
 
       if (error) throw error
       return data as ReadingPlan[]
@@ -72,11 +75,14 @@ export function useReadingPlan(planId: string) {
   return useQuery({
     queryKey: planKeys.detail(planId),
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('reading_plans')
-        .select('*')
-        .eq('id', planId)
-        .single()
+      // Using withTimeout to prevent hanging promises after tab suspension
+      const { data, error } = await withTimeout(() =>
+        supabase
+          .from('reading_plans')
+          .select('*')
+          .eq('id', planId)
+          .single()
+      )
 
       if (error) throw error
       return data as ReadingPlan
@@ -117,14 +123,17 @@ export function useUserPlan(userPlanId: string) {
   return useQuery({
     queryKey: planKeys.userPlan(userPlanId),
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('user_plans')
-        .select(`
-          *,
-          plan:reading_plans(*)
-        `)
-        .eq('id', userPlanId)
-        .single()
+      // Using withTimeout to prevent hanging promises after tab suspension
+      const { data, error } = await withTimeout(() =>
+        supabase
+          .from('user_plans')
+          .select(`
+            *,
+            plan:reading_plans(*)
+          `)
+          .eq('id', userPlanId)
+          .single()
+      )
 
       if (error) throw error
       return data as UserPlan & { plan: ReadingPlan }
@@ -140,12 +149,15 @@ export function useDailyProgress(userPlanId: string, date?: string) {
   return useQuery({
     queryKey: planKeys.dailyProgress(userPlanId, targetDate),
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('daily_progress')
-        .select('*')
-        .eq('user_plan_id', userPlanId)
-        .eq('date', targetDate)
-        .maybeSingle()
+      // Using withTimeout to prevent hanging promises after tab suspension
+      const { data, error } = await withTimeout(() =>
+        supabase
+          .from('daily_progress')
+          .select('*')
+          .eq('user_plan_id', userPlanId)
+          .eq('date', targetDate)
+          .maybeSingle()
+      )
 
       if (error) throw error
       return data as DailyProgress | null

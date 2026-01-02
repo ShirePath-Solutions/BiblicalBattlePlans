@@ -61,19 +61,24 @@ export const getCurrentSession = async () => {
  *
  * After browser tab suspension, Supabase promises can hang forever even though
  * the HTTP request completes successfully. This wrapper ensures queries fail
- * fast instead of hanging, allowing React Query's retry logic to recover.
+ * fast instead of hanging.
+ *
+ * If a query times out, we reload the page immediately because the Supabase
+ * client is corrupted and retrying won't help.
  *
  * Usage: await withTimeout(() => supabase.from('table').select('*'))
  */
 export async function withTimeout<T>(
   queryFn: () => PromiseLike<T>,
-  timeoutMs = 10000,
+  timeoutMs = 8000,
   errorMessage = 'Request timed out'
 ): Promise<T> {
   let timeoutId: ReturnType<typeof setTimeout>
 
   const timeoutPromise = new Promise<never>((_, reject) => {
     timeoutId = setTimeout(() => {
+      // Reload immediately - the client is corrupted and retrying won't help
+      window.location.reload()
       reject(new Error(errorMessage))
     }, timeoutMs)
   })
