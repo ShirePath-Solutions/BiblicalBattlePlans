@@ -536,7 +536,9 @@ export function useMarkChapterRead() {
           })
           .eq('id', existingProgress.id)
       } else {
-        await (supabase
+        // Try INSERT, but handle duplicate key error gracefully
+        // This can happen if progress query timed out but record actually exists
+        const { error: insertError } = await (supabase
           .from('daily_progress') as ReturnType<typeof supabase.from>)
           .insert({
             user_id: user.id,
@@ -546,6 +548,38 @@ export function useMarkChapterRead() {
             completed_sections: completedSections,
             is_complete: false,
           })
+
+        // If duplicate key error, fetch existing and update instead
+        if (insertError?.code === '23505' || insertError?.message?.includes('duplicate key')) {
+          const { data: actualExisting } = await supabase
+            .from('daily_progress')
+            .select('*')
+            .eq('user_plan_id', userPlanId)
+            .eq('date', today)
+            .single()
+
+          if (actualExisting) {
+            // Re-calculate toggle based on actual existing data
+            let actualSections = (actualExisting as DailyProgress).completed_sections || []
+            if (actualSections.includes(chapterKey)) {
+              actualSections = actualSections.filter((s: string) => s !== chapterKey)
+            } else {
+              actualSections = [...actualSections, chapterKey]
+            }
+
+            await (supabase
+              .from('daily_progress') as ReturnType<typeof supabase.from>)
+              .update({
+                completed_sections: actualSections,
+                updated_at: new Date().toISOString(),
+              })
+              .eq('id', (actualExisting as DailyProgress).id)
+
+            return { completedSections: actualSections }
+          }
+        } else if (insertError) {
+          throw insertError
+        }
       }
 
       // Note: We do NOT advance list_positions here - that's done explicitly
@@ -827,7 +861,9 @@ export function useMarkSectionComplete() {
         if (error) throw error
         return data as DailyProgress
       } else {
-        const { data, error } = await (supabase
+        // Try INSERT, but handle duplicate key error gracefully
+        // This can happen if progress query timed out but record actually exists
+        const { data, error: insertError } = await (supabase
           .from('daily_progress') as ReturnType<typeof supabase.from>)
           .insert({
             user_id: user.id,
@@ -840,7 +876,41 @@ export function useMarkSectionComplete() {
           .select()
           .single()
 
-        if (error) throw error
+        // If duplicate key error, fetch existing and update instead
+        if (insertError?.code === '23505' || insertError?.message?.includes('duplicate key')) {
+          const { data: actualExisting } = await supabase
+            .from('daily_progress')
+            .select('*')
+            .eq('user_plan_id', userPlanId)
+            .eq('date', today)
+            .single()
+
+          if (actualExisting) {
+            const existing = actualExisting as DailyProgress
+            // Re-calculate toggle based on actual existing data
+            const actualCompletedSections = existing.completed_sections || []
+            const recalculatedSections = actualCompletedSections.includes(sectionId)
+              ? actualCompletedSections.filter((s) => s !== sectionId)
+              : [...actualCompletedSections, sectionId]
+            const recalculatedIsComplete = recalculatedSections.length >= totalSections
+
+            const { data: updatedData, error: updateError } = await (supabase
+              .from('daily_progress') as ReturnType<typeof supabase.from>)
+              .update({
+                completed_sections: recalculatedSections,
+                is_complete: recalculatedIsComplete,
+                updated_at: new Date().toISOString(),
+              })
+              .eq('id', existing.id)
+              .select()
+              .single()
+
+            if (updateError) throw updateError
+            return updatedData as DailyProgress
+          }
+        }
+
+        if (insertError) throw insertError
         return data as DailyProgress
       }
     },
