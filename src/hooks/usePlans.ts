@@ -514,13 +514,15 @@ async function handleDuplicateKeyAndUpdate(
     return null // Not a duplicate key error
   }
 
-  // Fetch the existing record
-  const { data: actualExisting, error: fetchError } = await supabase
-    .from('daily_progress')
-    .select('*')
-    .eq('user_plan_id', userPlanId)
-    .eq('date', date)
-    .single()
+  // Fetch the existing record (with timeout to prevent hanging)
+  const { data: actualExisting, error: fetchError } = await withTimeout(() =>
+    supabase
+      .from('daily_progress')
+      .select('*')
+      .eq('user_plan_id', userPlanId)
+      .eq('date', date)
+      .single()
+  )
 
   if (fetchError || !actualExisting) {
     // Record was deleted between insert and fetch, or fetch failed
@@ -536,16 +538,18 @@ async function handleDuplicateKeyAndUpdate(
   const actualSections = toggleSection(existing.completed_sections || [], sectionId)
   const isComplete = isCompleteCalculator ? isCompleteCalculator(actualSections) : existing.is_complete
 
-  const { data: updatedData, error: updateError } = await (supabase
-    .from('daily_progress') as ReturnType<typeof supabase.from>)
-    .update({
-      completed_sections: actualSections,
-      is_complete: isComplete,
-      updated_at: new Date().toISOString(),
-    })
-    .eq('id', existing.id)
-    .select()
-    .single()
+  const updateResult = await withTimeout(() =>
+    (supabase.from('daily_progress') as ReturnType<typeof supabase.from>)
+      .update({
+        completed_sections: actualSections,
+        is_complete: isComplete,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', existing.id)
+      .select()
+      .single()
+  ) as { data: DailyProgress | null; error: Error | null }
+  const { data: updatedData, error: updateError } = updateResult
 
   if (updateError) {
     throw updateError
