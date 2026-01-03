@@ -38,8 +38,9 @@ jobs:
         uses: openai/codex-action@v1
         with:
           openai-api-key: ${{ secrets.OPENAI_API_KEY }}
+          output-file: codex-review.md
           prompt: |
-            Review this pull request and provide constructive feedback.
+            Review this pull request and provide constructive feedback in markdown format.
 
             PR Title: ${{ github.event.pull_request.title }}
             PR Description: ${{ github.event.pull_request.body }}
@@ -51,4 +52,61 @@ jobs:
             - Performance considerations
             - Suggestions for improvement
 
-            Be concise and actionable in your feedback. Post your review as a comment on the PR.
+            Format your response as a markdown document with clear sections and bullet points.
+            Be concise and actionable in your feedback.
+
+      - name: Post Review Comment
+        if: always() && hashFiles('codex-review.md') != ''
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+
+            let review = '';
+            try {
+              review = fs.readFileSync('codex-review.md', 'utf8');
+            } catch (e) {
+              console.log('No review file found');
+              return;
+            }
+
+            if (!review.trim()) {
+              console.log('Review file is empty');
+              return;
+            }
+
+            const prNumber = context.payload.pull_request?.number || context.payload.issue?.number;
+            if (!prNumber) {
+              console.log('No PR number found');
+              return;
+            }
+
+            // Find existing Codex comment
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: prNumber,
+            });
+
+            const botComment = comments.find(comment =>
+              comment.user.type === 'Bot' &&
+              comment.body.includes('## Codex Review')
+            );
+
+            const body = `## Codex Review\n\n${review}\n\n---\n*Automated review by OpenAI Codex*`;
+
+            if (botComment) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: botComment.id,
+                body: body
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: prNumber,
+                body: body
+              });
+            }
