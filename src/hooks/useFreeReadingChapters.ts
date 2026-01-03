@@ -2,7 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase, withTimeout } from '../lib/supabase'
 import { useAuth } from './useAuth'
 import { getLocalDate, planKeys } from './usePlans'
-import type { FreeReadingChapter, BookCompletionStatus, UserPlan, ReadingPlan, FreeReadingStructure, DailyProgress } from '../types'
+import type { FreeReadingChapter, BookCompletionStatus, ReadingPlan, FreeReadingStructure, DailyProgress } from '../types'
 import { 
   BIBLE_BOOKS, 
   APOCRYPHA_BOOKS, 
@@ -223,6 +223,7 @@ export function useToggleBook() {
 /**
  * Sync chapter completions with daily_progress for streak tracking
  * This should be called after toggling chapters to update the streak system
+ * Handles both additions and removals of chapters
  */
 export function useSyncDailyProgress() {
   const queryClient = useQueryClient()
@@ -231,46 +232,60 @@ export function useSyncDailyProgress() {
   return useMutation({
     mutationFn: async ({
       userPlanId,
-      chaptersAddedToday,
-      userPlan,
+      chaptersChanged,
+      action,
     }: {
       userPlanId: string
-      chaptersAddedToday: number
-      userPlan: UserPlan & { plan: ReadingPlan }
+      chaptersChanged: number
+      action: 'add' | 'remove'
     }) => {
       if (!user) throw new Error('Not authenticated')
-      if (chaptersAddedToday <= 0) return { synced: false }
+      if (chaptersChanged <= 0) return { synced: false }
 
       const today = getLocalDate()
 
       // Get today's progress
-      const { data: progressData } = await supabase
+      const { data: progressData, error: fetchError } = await supabase
         .from('daily_progress')
         .select('*')
         .eq('user_plan_id', userPlanId)
         .eq('date', today)
         .maybeSingle()
 
+      if (fetchError) {
+        console.error('[syncDailyProgress] Error fetching progress:', fetchError)
+        throw fetchError
+      }
+
       const existingProgress = progressData as DailyProgress | null
+      const currentSections = existingProgress?.completed_sections || []
 
-      // Create entries for streak tracking
-      const currentCount = existingProgress?.completed_sections?.length || 0
-      const newEntries = Array.from({ length: chaptersAddedToday }, (_, i) => `free:${currentCount + i}`)
+      let completedSections: string[]
 
-      const completedSections = [
-        ...(existingProgress?.completed_sections || []),
-        ...newEntries
-      ]
+      if (action === 'add') {
+        // Create entries for streak tracking
+        const currentCount = currentSections.length
+        const newEntries = Array.from({ length: chaptersChanged }, (_, i) => `free:${currentCount + i}`)
+        completedSections = [...currentSections, ...newEntries]
+      } else {
+        // Remove entries from the end (LIFO - removes most recent entries)
+        completedSections = currentSections.slice(0, Math.max(0, currentSections.length - chaptersChanged))
+      }
 
       if (existingProgress) {
-        await (supabase.from('daily_progress') as SupabaseFrom)
+        const { error: updateError } = await (supabase.from('daily_progress') as SupabaseFrom)
           .update({
             completed_sections: completedSections,
             updated_at: new Date().toISOString(),
           })
           .eq('id', existingProgress.id)
-      } else {
-        await (supabase.from('daily_progress') as SupabaseFrom)
+
+        if (updateError) {
+          console.error('[syncDailyProgress] Error updating progress:', updateError)
+          throw updateError
+        }
+      } else if (action === 'add') {
+        const { error: insertError } = await (supabase.from('daily_progress') as SupabaseFrom)
           .insert({
             user_id: user.id,
             user_plan_id: userPlanId,
@@ -279,21 +294,50 @@ export function useSyncDailyProgress() {
             completed_sections: completedSections,
             is_complete: false,
           })
+
+        if (insertError) {
+          console.error('[syncDailyProgress] Error inserting progress:', insertError)
+          throw insertError
+        }
       }
 
       // Update running total in user_plans
-      const currentTotal = userPlan.list_positions?.['free'] || 0
-      await (supabase.from('user_plans') as SupabaseFrom)
-        .update({ 
-          list_positions: { free: currentTotal + chaptersAddedToday } 
+      const { data: currentPlan, error: planFetchError } = await supabase
+        .from('user_plans')
+        .select('list_positions')
+        .eq('id', userPlanId)
+        .single()
+
+      if (planFetchError) {
+        console.error('[syncDailyProgress] Error fetching plan:', planFetchError)
+        throw planFetchError
+      }
+
+      const currentPositions = ((currentPlan as unknown as { list_positions?: Record<string, number> } | null)?.list_positions) || {}
+      const currentTotal = currentPositions['free'] || 0
+      const newTotal = action === 'add'
+        ? currentTotal + chaptersChanged
+        : Math.max(0, currentTotal - chaptersChanged)
+
+      const { error: updatePlanError } = await (supabase.from('user_plans') as SupabaseFrom)
+        .update({
+          list_positions: { ...currentPositions, free: newTotal }
         })
         .eq('id', userPlanId)
 
-      return { synced: true, newTotal: currentTotal + chaptersAddedToday }
+      if (updatePlanError) {
+        console.error('[syncDailyProgress] Error updating plan:', updatePlanError)
+        throw updatePlanError
+      }
+
+      console.log('[syncDailyProgress] Success:', { action, chaptersChanged, newTotal, completedSections: completedSections.length })
+      return { synced: true, newTotal }
     },
     onSuccess: (_, variables) => {
       const today = getLocalDate()
       queryClient.invalidateQueries({ queryKey: planKeys.dailyProgress(variables.userPlanId, today) })
+      // Also invalidate progressForPlanDay since free reading plans use this query
+      queryClient.invalidateQueries({ queryKey: ['progressForPlanDay', variables.userPlanId] })
       queryClient.invalidateQueries({ queryKey: planKeys.userPlan(variables.userPlanId) })
       if (user) {
         queryClient.invalidateQueries({ queryKey: planKeys.userPlans(user.id) })
@@ -305,7 +349,8 @@ export function useSyncDailyProgress() {
 }
 
 /**
- * Check if a free reading plan is complete and mark it as such
+ * Check if a free reading plan is complete and update its status accordingly.
+ * Handles both completing and uncompleting a plan when chapters are added/removed.
  */
 export function useCheckAndCompletePlan() {
   const queryClient = useQueryClient()
@@ -323,24 +368,21 @@ export function useCheckAndCompletePlan() {
     }) => {
       if (!user) throw new Error('Not authenticated')
 
-      const isComplete = completedChaptersCount >= totalChapters
+      const shouldBeComplete = completedChaptersCount >= totalChapters
 
-      if (isComplete) {
-        const { error } = await (supabase.from('user_plans') as SupabaseFrom)
-          .update({
-            is_completed: true,
-            completed_at: new Date().toISOString(),
-          })
-          .eq('id', userPlanId)
+      // Update completion status (handles both completing and uncompleting)
+      const { error } = await (supabase.from('user_plans') as SupabaseFrom)
+        .update({
+          is_completed: shouldBeComplete,
+          completed_at: shouldBeComplete ? new Date().toISOString() : null,
+        })
+        .eq('id', userPlanId)
 
-        if (error) throw error
-        return { completed: true }
-      }
-
-      return { completed: false }
+      if (error) throw error
+      return { completed: shouldBeComplete }
     },
-    onSuccess: (result, variables) => {
-      if (result.completed && user) {
+    onSuccess: (_, variables) => {
+      if (user) {
         queryClient.invalidateQueries({ queryKey: planKeys.userPlan(variables.userPlanId) })
         queryClient.invalidateQueries({ queryKey: planKeys.userPlans(user.id) })
         queryClient.invalidateQueries({ queryKey: ['stats', user.id] })

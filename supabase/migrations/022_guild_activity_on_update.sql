@@ -42,21 +42,21 @@ BEGIN
       v_should_log := NEW.is_complete = TRUE;
     END IF;
 
-    IF v_should_log THEN
-      -- For each guild the user is a member of
-      FOR v_guild IN
-        SELECT guild_id FROM guild_members WHERE user_id = NEW.user_id
-      LOOP
-        -- Check if an activity already exists for this user/guild/plan/date
-        SELECT id INTO v_existing_activity_id
-        FROM guild_activities
-        WHERE guild_id = v_guild.guild_id
-          AND user_id = NEW.user_id
-          AND activity_type = 'reading_completed'
-          AND metadata->>'date' = v_activity_date
-          AND metadata->>'plan_name' = v_plan_name
-        LIMIT 1;
+    -- For each guild the user is a member of
+    FOR v_guild IN
+      SELECT guild_id FROM guild_members WHERE user_id = NEW.user_id
+    LOOP
+      -- Check if an activity already exists for this user/guild/plan/date
+      SELECT id INTO v_existing_activity_id
+      FROM guild_activities
+      WHERE guild_id = v_guild.guild_id
+        AND user_id = NEW.user_id
+        AND activity_type = 'reading_completed'
+        AND metadata->>'date' = v_activity_date
+        AND metadata->>'plan_name' = v_plan_name
+      LIMIT 1;
 
+      IF v_should_log THEN
         IF v_existing_activity_id IS NOT NULL THEN
           -- UPDATE existing activity with new total chapter count
           UPDATE guild_activities
@@ -83,8 +83,14 @@ BEGIN
             )
           );
         END IF;
-      END LOOP;
-    END IF;
+      ELSE
+        -- No progress to log - DELETE existing activity if it exists
+        -- This handles the case where chapters were removed/unchecked
+        IF v_existing_activity_id IS NOT NULL THEN
+          DELETE FROM guild_activities WHERE id = v_existing_activity_id;
+        END IF;
+      END IF;
+    END LOOP;
   EXCEPTION WHEN OTHERS THEN
     RAISE WARNING '[GuildActivity] Failed to log reading_completed for user % (plan %): % (SQLSTATE: %)',
       NEW.user_id, NEW.user_plan_id, SQLERRM, SQLSTATE;
@@ -105,8 +111,9 @@ CREATE INDEX IF NOT EXISTS idx_guild_activities_reading_lookup
   WHERE activity_type = 'reading_completed';
 
 -- Add comment documenting the change
-COMMENT ON FUNCTION log_guild_reading_activity IS 
-  'Logs reading activity to guild_activities when daily_progress is inserted or updated. 
+COMMENT ON FUNCTION log_guild_reading_activity IS
+  'Logs reading activity to guild_activities when daily_progress is inserted or updated.
    Aggregates by user/plan/date - updates existing activity instead of creating duplicates.
+   Deletes activity when progress is reverted to zero (handles chapter unchecking).
    This ensures Free Reading chapter picker shows one clean entry per plan per day.';
 

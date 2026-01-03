@@ -1,6 +1,6 @@
 import { useParams, useNavigate, Link } from 'react-router-dom'
-import { useState, useEffect, useCallback } from 'react'
-import { Swords, BookOpen, ChevronRight, Archive, ChevronLeft, Trophy, List, Grid } from 'lucide-react'
+import { useEffect, useCallback } from 'react'
+import { Swords, BookOpen, ChevronRight, Archive, ChevronLeft, Trophy } from 'lucide-react'
 import { toast } from 'sonner'
 import {
   useUserPlan,
@@ -10,7 +10,6 @@ import {
   useMarkSectionComplete,
   useAdvanceList,
   useAdvanceDay,
-  useLogFreeReading,
   useArchivePlan,
   useMarkPlanComplete,
   useTodaysTotalChapters,
@@ -19,6 +18,7 @@ import {
   calculatePlanProgress,
   getChaptersReadToday,
   isPlanAtFinalDay,
+  countChaptersInPassage,
 } from '../hooks/usePlans'
 import {
   useBookCompletionStatus,
@@ -31,7 +31,7 @@ import {
 import { useQuestCompleteAchievement } from '../hooks/useAchievements'
 import { useAuth } from '../hooks/useAuth'
 import { captureError } from '../lib/errorLogger'
-import { ReadingSection, PlanProgress, FreeReadingInput, BibleChapterPicker, BibleProgressDashboard } from '../components/plans'
+import { ReadingSection, PlanProgress, BibleChapterPicker, BibleProgressDashboard } from '../components/plans'
 import { Card, CardHeader, CardContent, Button, LoadingSpinner, Badge } from '../components/ui'
 import { queryClient } from '../lib/queryClient'
 
@@ -39,9 +39,6 @@ export function ActivePlan() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const { profile } = useAuth()
-
-  // Free reading mode: 'quick' for numeric input, 'picker' for chapter checkboxes
-  const [freeReadingMode, setFreeReadingMode] = useState<'quick' | 'picker'>('picker')
 
   const { data: userPlan, isLoading: planLoading, error: planError } = useUserPlan(id || '')
   // For cycling plans, use today's progress (tracks by listId:chapterIndex)
@@ -81,7 +78,6 @@ export function ActivePlan() {
   const markSectionComplete = useMarkSectionComplete()
   const advanceList = useAdvanceList()
   const advanceDay = useAdvanceDay()
-  const logFreeReading = useLogFreeReading()
   const archivePlan = useArchivePlan()
   const markPlanComplete = useMarkPlanComplete()
   const triggerQuestComplete = useQuestCompleteAchievement()
@@ -91,9 +87,8 @@ export function ActivePlan() {
   const error = planError || progressError
   const isMutating = markChapterRead.isPending || markSectionComplete.isPending ||
                      advanceList.isPending || advanceDay.isPending ||
-                     logFreeReading.isPending || archivePlan.isPending ||
-                     markPlanComplete.isPending || toggleChapter.isPending ||
-                     toggleBook.isPending
+                     archivePlan.isPending || markPlanComplete.isPending ||
+                     toggleChapter.isPending || toggleBook.isPending
 
   // Achievement effects - must be before early returns to satisfy React hooks rules
   // Auto-mark plan as complete when final day readings are done
@@ -152,20 +147,18 @@ export function ActivePlan() {
         isCurrentlyCompleted: isCompleted,
       })
 
-      // Sync with daily progress for streak tracking (only when adding)
-      if (result.action === 'added') {
-        await syncDailyProgress.mutateAsync({
-          userPlanId: id,
-          chaptersAddedToday: 1,
-          userPlan,
-        })
-      }
+      // Sync with daily progress for streak tracking (handles both add and remove)
+      await syncDailyProgress.mutateAsync({
+        userPlanId: id,
+        chaptersChanged: 1,
+        action: result.action === 'added' ? 'add' : 'remove',
+      })
 
-      // Check for plan completion
-      const newTotal = result.action === 'added' 
-        ? freeReadingCompleted + 1 
+      // Check for plan completion (handles both completing and uncompleting)
+      const newTotal = result.action === 'added'
+        ? freeReadingCompleted + 1
         : freeReadingCompleted - 1
-      
+
       await checkAndCompletePlan.mutateAsync({
         userPlanId: id,
         completedChaptersCount: newTotal,
@@ -189,7 +182,9 @@ export function ActivePlan() {
 
     try {
       const isFullyComplete = completedChapterNumbers.length >= totalChapters
-      const chaptersToAdd = isFullyComplete ? 0 : totalChapters - completedChapterNumbers.length
+      const chaptersToToggle = isFullyComplete
+        ? completedChapterNumbers.length  // Removing all completed chapters
+        : totalChapters - completedChapterNumbers.length  // Adding remaining chapters
 
       await toggleBook.mutateAsync({
         userPlanId: id,
@@ -198,20 +193,18 @@ export function ActivePlan() {
         currentlyCompletedChapters: completedChapterNumbers,
       })
 
-      // Sync with daily progress for streak tracking (only when adding)
-      if (chaptersToAdd > 0) {
-        await syncDailyProgress.mutateAsync({
-          userPlanId: id,
-          chaptersAddedToday: chaptersToAdd,
-          userPlan,
-        })
-      }
+      // Sync with daily progress for streak tracking (handles both add and remove)
+      await syncDailyProgress.mutateAsync({
+        userPlanId: id,
+        chaptersChanged: chaptersToToggle,
+        action: isFullyComplete ? 'remove' : 'add',
+      })
 
-      // Check for plan completion
-      const newTotal = isFullyComplete 
+      // Check for plan completion (handles both completing and uncompleting)
+      const newTotal = isFullyComplete
         ? freeReadingCompleted - completedChapterNumbers.length
-        : freeReadingCompleted + chaptersToAdd
-      
+        : freeReadingCompleted + chaptersToToggle
+
       await checkAndCompletePlan.mutateAsync({
         userPlanId: id,
         completedChaptersCount: newTotal,
@@ -223,9 +216,9 @@ export function ActivePlan() {
         triggerQuestComplete(userPlan.plan.name, userPlan.plan.id)
       }
 
-      toast.success(isFullyComplete 
-        ? `Unmarked all chapters in ${book}` 
-        : `Marked ${chaptersToAdd} chapter${chaptersToAdd === 1 ? '' : 's'} in ${book} as read!`
+      toast.success(isFullyComplete
+        ? `Unmarked all chapters in ${book}`
+        : `Marked ${chaptersToToggle} chapter${chaptersToToggle === 1 ? '' : 's'} in ${book} as read!`
       )
     } catch (err) {
       captureError(err, { component: 'ActivePlan', action: 'toggleBook', planId: id })
@@ -293,8 +286,12 @@ export function ActivePlan() {
     return { currentWeek, dayInWeek, totalWeeks: structure.total_weeks }
   })() : null
 
-  // Chapters read in THIS plan today (for plan-specific display)
+  // Chapters read in THIS plan's current day (for Today's Progress display)
   const chaptersReadToday = getChaptersReadToday(progress || null, plan, userPlan)
+
+  // Chapters read TODAY for this plan (date-based, for Quest Stats)
+  // This preserves the count even after advancing to the next day
+  const chaptersReadTodayForPlan = getChaptersReadToday(todayProgress || null, plan, userPlan)
 
   // Streak is based on TOTAL chapters across ALL plans today
   const streakMinimum = profile?.streak_minimum || 3
@@ -406,24 +403,6 @@ export function ActivePlan() {
     }
   }
 
-  const handleLogFreeReading = async (chapters: number, notes?: string) => {
-    if (!id || !userPlan) return
-
-    try {
-      await logFreeReading.mutateAsync({
-        userPlanId: id,
-        chapters,
-        notes,
-        userPlan,
-      })
-
-      toast.success(`Logged ${chapters} chapter${chapters !== 1 ? 's' : ''}!`)
-    } catch (err) {
-      captureError(err, { component: 'ActivePlan', action: 'logFreeReading', planId: id })
-      toast.error('Failed to log reading. Please try again.')
-    }
-  }
-
   return (
     <div className="max-w-3xl mx-auto space-y-6">
       {/* Back button */}
@@ -466,14 +445,18 @@ export function ActivePlan() {
               completedToday={
                 plan.daily_structure.type === 'sectional'
                   ? todaysReading.filter(s => s.isCompleted).length
-                  : chaptersReadToday
+                  : plan.daily_structure.type === 'weekly_sectional'
+                    ? todaysReading.filter(s => s.isCompleted).reduce((sum, s) => sum + countChaptersInPassage(s.passage), 0)
+                    : chaptersReadToday
               }
               totalToday={
                 isCyclingPlan
-                  ? streakMinimum
-                  : plan.daily_structure.type === 'sequential' || plan.daily_structure.type === 'weekly_sectional'
-                    ? (plan.daily_structure as { chapters_per_day?: number }).chapters_per_day || streakMinimum
-                    : todaysReading.length
+                  ? todaysReading.length  // Number of lists for cycling plans
+                  : plan.daily_structure.type === 'weekly_sectional'
+                    ? todaysReading.reduce((sum, section) => sum + countChaptersInPassage(section.passage), 0) || 1
+                    : plan.daily_structure.type === 'sequential'
+                      ? (plan.daily_structure as { chapters_per_day?: number }).chapters_per_day || 3
+                      : todaysReading.length  // For sectional plans
               }
               unit={
                 plan.daily_structure.type === 'sectional'
@@ -495,7 +478,7 @@ export function ActivePlan() {
             <div className="flex items-center gap-2">
               <BookOpen className="w-4 h-4 text-ink-muted" />
               <span className="font-pixel text-[0.625rem] text-ink">
-                {chaptersReadToday} chapter{chaptersReadToday !== 1 ? 's' : ''} read
+                {totalChaptersToday} chapter{totalChaptersToday !== 1 ? 's' : ''} read
               </span>
             </div>
           </div>
@@ -514,7 +497,7 @@ export function ActivePlan() {
         </div>
       </Card>
 
-      {/* Current Readings or Free Reading Input */}
+      {/* Current Readings or Free Reading Chapter Picker */}
       {isFreeReading ? (
         <>
           {/* Progress Dashboard for Free Reading */}
@@ -527,55 +510,15 @@ export function ActivePlan() {
             planName={plan.name}
           />
 
-          {/* Mode Toggle */}
-          <div className="flex items-center justify-center gap-2">
-            <button
-              onClick={() => setFreeReadingMode('picker')}
-              className={`
-                flex items-center gap-2 px-4 py-2 font-pixel text-[0.625rem]
-                border transition-all
-                ${freeReadingMode === 'picker'
-                  ? 'bg-sage text-white border-sage-dark'
-                  : 'bg-parchment-light text-ink-muted border-border-subtle hover:border-sage'
-                }
-              `}
-            >
-              <Grid className="w-4 h-4" />
-              CHAPTER PICKER
-            </button>
-            <button
-              onClick={() => setFreeReadingMode('quick')}
-              className={`
-                flex items-center gap-2 px-4 py-2 font-pixel text-[0.625rem]
-                border transition-all
-                ${freeReadingMode === 'quick'
-                  ? 'bg-sage text-white border-sage-dark'
-                  : 'bg-parchment-light text-ink-muted border-border-subtle hover:border-sage'
-                }
-              `}
-            >
-              <List className="w-4 h-4" />
-              QUICK LOG
-            </button>
-          </div>
-
-          {/* Chapter Picker or Quick Log */}
-          {freeReadingMode === 'picker' ? (
-            <BibleChapterPicker
-              books={booksAndTotal.books}
-              completedChapters={completedChapters}
-              bookStatus={bookStatus}
-              onToggleChapter={handleToggleChapter}
-              onToggleBook={handleToggleBook}
-              disabled={isMutating}
-            />
-          ) : (
-            <FreeReadingInput
-              onSubmit={handleLogFreeReading}
-              isLoading={isMutating}
-              chaptersReadToday={chaptersReadToday}
-            />
-          )}
+          {/* Chapter Picker */}
+          <BibleChapterPicker
+            books={booksAndTotal.books}
+            completedChapters={completedChapters}
+            bookStatus={bookStatus}
+            onToggleChapter={handleToggleChapter}
+            onToggleBook={handleToggleBook}
+            disabled={isMutating}
+          />
         </>
       ) : (
         <Card noPadding>
@@ -718,7 +661,7 @@ export function ActivePlan() {
                 <div className="font-pixel text-xl text-ink">
                   {plan.daily_structure.type === 'sectional'
                     ? todaysReading.filter(s => s.isCompleted).length
-                    : chaptersReadToday}
+                    : chaptersReadTodayForPlan}
                 </div>
                 <div className="font-pixel text-[0.625rem] text-ink-muted mt-1">
                   {plan.daily_structure.type === 'sectional' ? 'Readings Today' : 'Chapters Today'}
@@ -854,10 +797,6 @@ export function ActivePlan() {
             <div className="flex items-start gap-3">
               <ChevronRight className="w-4 h-4 text-sage flex-shrink-0 mt-0.5" />
               <p className="font-pixel text-[0.625rem] text-ink-muted leading-relaxed">Complete all {freeReadingTotal.toLocaleString()} chapters to finish this quest and earn an achievement!</p>
-            </div>
-            <div className="flex items-start gap-3">
-              <ChevronRight className="w-4 h-4 text-sage flex-shrink-0 mt-0.5" />
-              <p className="font-pixel text-[0.625rem] text-ink-muted leading-relaxed">Switch to Quick Log mode to quickly log a number of chapters without selecting specific ones.</p>
             </div>
           </div>
         </Card>
