@@ -26,7 +26,29 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Get PR diff
+        id: diff
+        run: |
+          git fetch origin ${{ github.base_ref }}
+          echo "diff<<EOF" >> $GITHUB_OUTPUT
+          git diff origin/${{ github.base_ref }}...HEAD >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
       - name: Run Codex Review
         uses: openai/codex-action@v1
         with:
           openai-api-key: ${{ secrets.OPENAI_API_KEY }}
+          prompt: |
+            Review this pull request and provide constructive feedback.
+
+            PR Title: ${{ github.event.pull_request.title }}
+            PR Description: ${{ github.event.pull_request.body }}
+
+            Focus on:
+            - Code quality and best practices
+            - Potential bugs or issues
+            - Security concerns
+            - Performance considerations
+            - Suggestions for improvement
+
+            Be concise and actionable in your feedback. Post your review as a comment on the PR.
