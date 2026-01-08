@@ -480,7 +480,11 @@ export function useStartPlan() {
     },
     onSuccess: () => {
       if (user) {
-        queryClient.invalidateQueries({ queryKey: planKeys.userPlans(user.id) })
+        // Mark userPlans stale but don't refetch until Dashboard is visited
+        queryClient.invalidateQueries({ 
+          queryKey: planKeys.userPlans(user.id),
+          refetchType: 'none'
+        })
       }
     },
   })
@@ -656,16 +660,29 @@ export function useMarkChapterRead() {
     },
     onSuccess: (_, variables) => {
       const today = getLocalDate()
+      // Critical queries for current page - refetch immediately
       queryClient.invalidateQueries({ queryKey: planKeys.dailyProgress(variables.userPlanId, today) })
       queryClient.invalidateQueries({ queryKey: planKeys.userPlan(variables.userPlanId) })
-      // Also invalidate the day_number-based progress queries (used by ActivePlan and Dashboard)
       queryClient.invalidateQueries({ queryKey: ['progressForPlanDay', variables.userPlanId] })
+      
       if (user) {
-        queryClient.invalidateQueries({ queryKey: planKeys.userPlans(user.id) })
+        // Stats and total progress needed for streak display on ActivePlan - refetch immediately
         queryClient.invalidateQueries({ queryKey: planKeys.todaysTotalProgress(user.id, today) })
         queryClient.invalidateQueries({ queryKey: ['stats', user.id] })
-        queryClient.invalidateQueries({ queryKey: ['allTodayProgress', user.id, today] })
-        queryClient.invalidateQueries({ queryKey: ['progressByDayNumber', user.id] })
+        
+        // Dashboard-only queries - mark stale but don't refetch until Dashboard is visited
+        queryClient.invalidateQueries({ 
+          queryKey: planKeys.userPlans(user.id),
+          refetchType: 'none' // Only refetch when Dashboard component mounts
+        })
+        queryClient.invalidateQueries({ 
+          queryKey: ['allTodayProgress', user.id, today],
+          refetchType: 'none' // Only refetch when Dashboard component mounts
+        })
+        queryClient.invalidateQueries({ 
+          queryKey: ['progressByDayNumber', user.id],
+          refetchType: 'none' // Only refetch when Dashboard component mounts
+        })
       }
     },
   })
@@ -717,9 +734,13 @@ export function useAdvanceList() {
       queryClient.invalidateQueries({ queryKey: planKeys.dailyProgress(variables.userPlanId, today) })
       queryClient.invalidateQueries({ queryKey: planKeys.userPlan(variables.userPlanId) })
       if (user) {
-        queryClient.invalidateQueries({ queryKey: planKeys.userPlans(user.id) })
         queryClient.invalidateQueries({ queryKey: planKeys.todaysTotalProgress(user.id, today) })
         queryClient.invalidateQueries({ queryKey: ['stats', user.id] })
+        // Mark userPlans stale but don't refetch until Dashboard is visited
+        queryClient.invalidateQueries({ 
+          queryKey: planKeys.userPlans(user.id),
+          refetchType: 'none'
+        })
       }
     },
   })
@@ -762,9 +783,13 @@ export function useAdvanceDay() {
       queryClient.invalidateQueries({ queryKey: planKeys.dailyProgress(variables.userPlanId, today) })
       queryClient.invalidateQueries({ queryKey: planKeys.userPlan(variables.userPlanId) })
       if (user) {
-        queryClient.invalidateQueries({ queryKey: planKeys.userPlans(user.id) })
         queryClient.invalidateQueries({ queryKey: planKeys.todaysTotalProgress(user.id, today) })
         queryClient.invalidateQueries({ queryKey: ['stats', user.id] })
+        // Mark userPlans stale but don't refetch until Dashboard is visited
+        queryClient.invalidateQueries({ 
+          queryKey: planKeys.userPlans(user.id),
+          refetchType: 'none'
+        })
       }
     },
   })
@@ -793,9 +818,13 @@ export function useMarkPlanComplete() {
       const today = getLocalDate()
       queryClient.invalidateQueries({ queryKey: planKeys.userPlan(variables.userPlanId) })
       if (user) {
-        queryClient.invalidateQueries({ queryKey: planKeys.userPlans(user.id) })
         queryClient.invalidateQueries({ queryKey: ['stats', user.id] })
         queryClient.invalidateQueries({ queryKey: planKeys.todaysTotalProgress(user.id, today) })
+        // Mark userPlans stale but don't refetch until Dashboard is visited
+        queryClient.invalidateQueries({ 
+          queryKey: planKeys.userPlans(user.id),
+          refetchType: 'none'
+        })
       }
     },
   })
@@ -887,21 +916,39 @@ export function useMarkSectionComplete() {
       // Invalidate the specific day_number query as well
       queryClient.invalidateQueries({ queryKey: ['progressForPlanDay', variables.userPlanId, variables.dayNumber] })
 
-      // Always invalidate stats, allTodayProgress, and todaysTotalProgress when sections are marked
+      // Always invalidate stats and todaysTotalProgress when sections are marked (needed for ActivePlan)
       if (user) {
         queryClient.invalidateQueries({ queryKey: ['stats', user.id] })
-        queryClient.invalidateQueries({ queryKey: ['allTodayProgress', user.id, today] })
         queryClient.invalidateQueries({ queryKey: planKeys.todaysTotalProgress(user.id, today) })
-        queryClient.invalidateQueries({ queryKey: ['progressByDayNumber', user.id] })
-        // Invalidate guild data (user may be in multiple guilds)
-        queryClient.invalidateQueries({ queryKey: ['guildChapterCounts'] })
-        // Invalidate guild detail to refresh profile.total_chapters_read
-        queryClient.invalidateQueries({ queryKey: ['guilds', 'detail'] })
+        
+        // Dashboard-only queries - mark stale but don't refetch until Dashboard is visited
+        queryClient.invalidateQueries({ 
+          queryKey: ['allTodayProgress', user.id, today],
+          refetchType: 'none'
+        })
+        queryClient.invalidateQueries({ 
+          queryKey: ['progressByDayNumber', user.id],
+          refetchType: 'none'
+        })
+        
+        // Guild queries - mark stale but don't refetch until Guild page is visited
+        queryClient.invalidateQueries({ 
+          queryKey: ['guildChapterCounts'],
+          refetchType: 'none'
+        })
+        queryClient.invalidateQueries({ 
+          queryKey: ['guilds', 'detail'],
+          refetchType: 'none'
+        })
       }
 
       if (data.is_complete && user) {
         queryClient.invalidateQueries({ queryKey: planKeys.userPlan(variables.userPlanId) })
-        queryClient.invalidateQueries({ queryKey: planKeys.userPlans(user.id) })
+        // Mark userPlans stale but don't refetch until Dashboard is visited
+        queryClient.invalidateQueries({ 
+          queryKey: planKeys.userPlans(user.id),
+          refetchType: 'none'
+        })
       }
     },
   })
@@ -1287,7 +1334,11 @@ export function useArchivePlan() {
     },
     onSuccess: () => {
       if (user) {
-        queryClient.invalidateQueries({ queryKey: planKeys.userPlans(user.id) })
+        // Mark userPlans stale but don't refetch until Dashboard is visited
+        queryClient.invalidateQueries({ 
+          queryKey: planKeys.userPlans(user.id),
+          refetchType: 'none'
+        })
       }
     },
   })
@@ -1317,7 +1368,11 @@ export function useUnarchivePlan() {
     },
     onSuccess: () => {
       if (user) {
-        queryClient.invalidateQueries({ queryKey: planKeys.userPlans(user.id) })
+        // Mark userPlans stale but don't refetch until Dashboard is visited
+        queryClient.invalidateQueries({ 
+          queryKey: planKeys.userPlans(user.id),
+          refetchType: 'none'
+        })
       }
     },
   })
