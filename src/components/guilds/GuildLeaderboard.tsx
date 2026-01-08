@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react'
 import { Trophy, Flame, BookOpen } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
-import { supabase, withTimeout } from '../../lib/supabase'
+import { getSupabase, safeQuery } from '../../lib/supabase'
 import { useAuth } from '../../hooks/useAuth'
 import { getStreakRank } from '../../hooks/useStats'
 import { LoadingSpinner } from '../ui'
@@ -15,11 +15,11 @@ type GuildChapterCountRow = {
 }
 
 // Typed RPC call helper for guild chapter counts
-// Using withTimeout to prevent hanging promises after tab suspension
+// Using safeQuery to prevent hanging promises after tab suspension
 async function getGuildChapterCounts(guildId: string, weekStart: string, monthStart: string) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const result = await withTimeout(() =>
-    (supabase.rpc as any)('get_guild_chapter_counts', {
+  const result = await safeQuery(() =>
+    (getSupabase().rpc as any)('get_guild_chapter_counts', {
       p_guild_id: guildId,
       p_week_start: weekStart,
       p_month_start: monthStart,
@@ -105,7 +105,7 @@ export function GuildLeaderboard({ guildId, members }: GuildLeaderboardProps) {
       return counts
     },
     enabled: !!guildId,
-    staleTime: 30 * 1000, // 30 seconds - refresh more frequently for leaderboard data
+    // Uses global staleTime (5 minutes) - data updated via DB triggers on reading completion
   })
 
   // Build leaderboard entries from members (passed from parent)

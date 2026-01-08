@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { supabase, withTimeout } from '../lib/supabase'
+import { getSupabase, safeQuery } from '../lib/supabase'
 import { useAuth } from './useAuth'
 import type { ReadingPlan, UserPlan, DailyProgress, DailyStructure, CyclingListsStructure, ListPositions, WeeklySectionalStructure } from '../types'
 
@@ -55,9 +55,9 @@ export function useReadingPlans() {
   return useQuery({
     queryKey: planKeys.list(),
     queryFn: async () => {
-      // Using withTimeout to prevent hanging promises after tab suspension
-      const { data, error } = await withTimeout(() =>
-        supabase
+      // Using safeQuery to prevent hanging promises after tab suspension
+      const { data, error } = await safeQuery(() =>
+        getSupabase()
           .from('reading_plans')
           .select('*')
           .eq('is_active', true)
@@ -75,9 +75,9 @@ export function useReadingPlan(planId: string) {
   return useQuery({
     queryKey: planKeys.detail(planId),
     queryFn: async () => {
-      // Using withTimeout to prevent hanging promises after tab suspension
-      const { data, error } = await withTimeout(() =>
-        supabase
+      // Using safeQuery to prevent hanging promises after tab suspension
+      const { data, error } = await safeQuery(() =>
+        getSupabase()
           .from('reading_plans')
           .select('*')
           .eq('id', planId)
@@ -100,8 +100,8 @@ export function useUserPlans() {
     queryFn: async () => {
       if (!user) return []
 
-      const { data, error } = await withTimeout(() =>
-        supabase
+      const { data, error } = await safeQuery(() =>
+        getSupabase()
           .from('user_plans')
           .select(`
             *,
@@ -123,9 +123,9 @@ export function useUserPlan(userPlanId: string) {
   return useQuery({
     queryKey: planKeys.userPlan(userPlanId),
     queryFn: async () => {
-      // Using withTimeout to prevent hanging promises after tab suspension
-      const { data, error } = await withTimeout(() =>
-        supabase
+      // Using safeQuery to prevent hanging promises after tab suspension
+      const { data, error } = await safeQuery(() =>
+        getSupabase()
           .from('user_plans')
           .select(`
             *,
@@ -149,9 +149,9 @@ export function useDailyProgress(userPlanId: string, date?: string) {
   return useQuery({
     queryKey: planKeys.dailyProgress(userPlanId, targetDate),
     queryFn: async () => {
-      // Using withTimeout to prevent hanging promises after tab suspension
-      const { data, error } = await withTimeout(() =>
-        supabase
+      // Using safeQuery to prevent hanging promises after tab suspension
+      const { data, error } = await safeQuery(() =>
+        getSupabase()
           .from('daily_progress')
           .select('*')
           .eq('user_plan_id', userPlanId)
@@ -176,9 +176,9 @@ export function useProgressForPlanDay(userPlanId: string, dayNumber: number) {
   return useQuery({
     queryKey: ['progressForPlanDay', userPlanId, dayNumber],
     queryFn: async () => {
-      // Using withTimeout to prevent hanging promises after tab suspension
-      const { data, error } = await withTimeout(() =>
-        supabase
+      // Using safeQuery to prevent hanging promises after tab suspension
+      const { data, error } = await safeQuery(() =>
+        getSupabase()
           .from('daily_progress')
           .select('*')
           .eq('user_plan_id', userPlanId)
@@ -206,8 +206,8 @@ export function useAllTodayProgress() {
     queryFn: async () => {
       if (!user) return {}
 
-      const { data, error } = await withTimeout(() =>
-        supabase
+      const { data, error } = await safeQuery(() =>
+        getSupabase()
           .from('daily_progress')
           .select('*')
           .eq('user_id', user.id)
@@ -252,8 +252,8 @@ export function useProgressByDayNumber() {
       cutoffDate.setDate(cutoffDate.getDate() - 30)
       const cutoff = cutoffDate.toISOString().split('T')[0]
 
-      const { data, error } = await withTimeout(() =>
-        supabase
+      const { data, error } = await safeQuery(() =>
+        getSupabase()
           .from('daily_progress')
           .select('*')
           .eq('user_id', user.id)
@@ -315,9 +315,9 @@ export function useTodaysTotalChapters() {
       }
 
       // Fetch all progress for today across all plans
-      const result = await withTimeout(() =>
-        (supabase
-          .from('daily_progress') as ReturnType<typeof supabase.from>)
+      const result = await safeQuery(() =>
+        (getSupabase()
+          .from('daily_progress') as ReturnType<ReturnType<typeof getSupabase>['from']>)
           .select('*, user_plan:user_plans(current_day, plan:reading_plans(daily_structure))')
           .eq('user_id', user.id)
           .eq('date', today)
@@ -444,7 +444,7 @@ export function useStartPlan() {
       if (!user) throw new Error('Not authenticated')
 
       // Fetch the plan to get list structure for initial positions
-      const { data: planData, error: planError } = await supabase
+      const { data: planData, error: planError } = await getSupabase()
         .from('reading_plans')
         .select('*')
         .eq('id', planId)
@@ -462,8 +462,8 @@ export function useStartPlan() {
         })
       }
 
-      const { data, error } = await (supabase
-        .from('user_plans') as ReturnType<typeof supabase.from>)
+      const { data, error } = await (getSupabase()
+        .from('user_plans') as ReturnType<ReturnType<typeof getSupabase>['from']>)
         .insert({
           user_id: user.id,
           plan_id: planId,
@@ -480,7 +480,11 @@ export function useStartPlan() {
     },
     onSuccess: () => {
       if (user) {
-        queryClient.invalidateQueries({ queryKey: planKeys.userPlans(user.id) })
+        // Mark userPlans stale but don't refetch until Dashboard is visited
+        queryClient.invalidateQueries({ 
+          queryKey: planKeys.userPlans(user.id),
+          refetchType: 'none'
+        })
       }
     },
   })
@@ -516,8 +520,8 @@ async function handleDuplicateKeyAndUpdate(
   }
 
   // Fetch the existing record (with timeout to prevent hanging)
-  const { data: actualExisting, error: fetchError } = await withTimeout(() =>
-    supabase
+  const { data: actualExisting, error: fetchError } = await safeQuery(() =>
+    getSupabase()
       .from('daily_progress')
       .select('*')
       .eq('user_plan_id', userPlanId)
@@ -560,8 +564,8 @@ async function handleDuplicateKeyAndUpdate(
     updateData.day_number = targetDayNumber
   }
 
-  const updateResult = await withTimeout(() =>
-    (supabase.from('daily_progress') as ReturnType<typeof supabase.from>)
+  const updateResult = await safeQuery(() =>
+    (getSupabase().from('daily_progress') as ReturnType<ReturnType<typeof getSupabase>['from']>)
       .update(updateData)
       .eq('id', existing.id)
       .select()
@@ -599,7 +603,7 @@ export function useMarkChapterRead() {
       const chapterKey = `${listId}:${chapterIndex}`
 
       // 1. Get or create today's progress
-      const { data: progressData } = await supabase
+      const { data: progressData } = await getSupabase()
         .from('daily_progress')
         .select('*')
         .eq('user_plan_id', userPlanId)
@@ -611,8 +615,8 @@ export function useMarkChapterRead() {
 
       // 2. Update or create daily_progress
       if (existingProgress) {
-        const { error: updateError } = await (supabase
-          .from('daily_progress') as ReturnType<typeof supabase.from>)
+        const { error: updateError } = await (getSupabase()
+          .from('daily_progress') as ReturnType<ReturnType<typeof getSupabase>['from']>)
           .update({
             completed_sections: completedSections,
             updated_at: new Date().toISOString(),
@@ -622,8 +626,8 @@ export function useMarkChapterRead() {
         if (updateError) throw updateError
       } else {
         // Try INSERT, handle duplicate key error gracefully
-        const { error: insertError } = await (supabase
-          .from('daily_progress') as ReturnType<typeof supabase.from>)
+        const { error: insertError } = await (getSupabase()
+          .from('daily_progress') as ReturnType<ReturnType<typeof getSupabase>['from']>)
           .insert({
             user_id: user.id,
             user_plan_id: userPlanId,
@@ -656,16 +660,29 @@ export function useMarkChapterRead() {
     },
     onSuccess: (_, variables) => {
       const today = getLocalDate()
+      // Critical queries for current page - refetch immediately
       queryClient.invalidateQueries({ queryKey: planKeys.dailyProgress(variables.userPlanId, today) })
       queryClient.invalidateQueries({ queryKey: planKeys.userPlan(variables.userPlanId) })
-      // Also invalidate the day_number-based progress queries (used by ActivePlan and Dashboard)
       queryClient.invalidateQueries({ queryKey: ['progressForPlanDay', variables.userPlanId] })
+      
       if (user) {
-        queryClient.invalidateQueries({ queryKey: planKeys.userPlans(user.id) })
+        // Stats and total progress needed for streak display on ActivePlan - refetch immediately
         queryClient.invalidateQueries({ queryKey: planKeys.todaysTotalProgress(user.id, today) })
         queryClient.invalidateQueries({ queryKey: ['stats', user.id] })
-        queryClient.invalidateQueries({ queryKey: ['allTodayProgress', user.id, today] })
-        queryClient.invalidateQueries({ queryKey: ['progressByDayNumber', user.id] })
+        
+        // Dashboard-only queries - mark stale but don't refetch until Dashboard is visited
+        queryClient.invalidateQueries({ 
+          queryKey: planKeys.userPlans(user.id),
+          refetchType: 'none' // Only refetch when Dashboard component mounts
+        })
+        queryClient.invalidateQueries({ 
+          queryKey: ['allTodayProgress', user.id, today],
+          refetchType: 'none' // Only refetch when Dashboard component mounts
+        })
+        queryClient.invalidateQueries({ 
+          queryKey: ['progressByDayNumber', user.id],
+          refetchType: 'none' // Only refetch when Dashboard component mounts
+        })
       }
     },
   })
@@ -702,8 +719,8 @@ export function useAdvanceList() {
         [listId]: newPosition,
       }
 
-      await (supabase
-        .from('user_plans') as ReturnType<typeof supabase.from>)
+      await (getSupabase()
+        .from('user_plans') as ReturnType<ReturnType<typeof getSupabase>['from']>)
         .update({ list_positions: newPositions })
         .eq('id', userPlanId)
 
@@ -717,9 +734,13 @@ export function useAdvanceList() {
       queryClient.invalidateQueries({ queryKey: planKeys.dailyProgress(variables.userPlanId, today) })
       queryClient.invalidateQueries({ queryKey: planKeys.userPlan(variables.userPlanId) })
       if (user) {
-        queryClient.invalidateQueries({ queryKey: planKeys.userPlans(user.id) })
         queryClient.invalidateQueries({ queryKey: planKeys.todaysTotalProgress(user.id, today) })
         queryClient.invalidateQueries({ queryKey: ['stats', user.id] })
+        // Mark userPlans stale but don't refetch until Dashboard is visited
+        queryClient.invalidateQueries({ 
+          queryKey: planKeys.userPlans(user.id),
+          refetchType: 'none'
+        })
       }
     },
   })
@@ -746,8 +767,8 @@ export function useAdvanceDay() {
       // Check if plan is now complete (reached the final day)
       const isNowComplete = newDay >= maxDay
 
-      await (supabase
-        .from('user_plans') as ReturnType<typeof supabase.from>)
+      await (getSupabase()
+        .from('user_plans') as ReturnType<ReturnType<typeof getSupabase>['from']>)
         .update({
           current_day: newDay,
           is_completed: isNowComplete,
@@ -762,9 +783,13 @@ export function useAdvanceDay() {
       queryClient.invalidateQueries({ queryKey: planKeys.dailyProgress(variables.userPlanId, today) })
       queryClient.invalidateQueries({ queryKey: planKeys.userPlan(variables.userPlanId) })
       if (user) {
-        queryClient.invalidateQueries({ queryKey: planKeys.userPlans(user.id) })
         queryClient.invalidateQueries({ queryKey: planKeys.todaysTotalProgress(user.id, today) })
         queryClient.invalidateQueries({ queryKey: ['stats', user.id] })
+        // Mark userPlans stale but don't refetch until Dashboard is visited
+        queryClient.invalidateQueries({ 
+          queryKey: planKeys.userPlans(user.id),
+          refetchType: 'none'
+        })
       }
     },
   })
@@ -779,8 +804,8 @@ export function useMarkPlanComplete() {
     mutationFn: async ({ userPlanId }: { userPlanId: string }) => {
       if (!user) throw new Error('Not authenticated')
 
-      await (supabase
-        .from('user_plans') as ReturnType<typeof supabase.from>)
+      await (getSupabase()
+        .from('user_plans') as ReturnType<ReturnType<typeof getSupabase>['from']>)
         .update({
           is_completed: true,
           completed_at: new Date().toISOString(),
@@ -793,9 +818,13 @@ export function useMarkPlanComplete() {
       const today = getLocalDate()
       queryClient.invalidateQueries({ queryKey: planKeys.userPlan(variables.userPlanId) })
       if (user) {
-        queryClient.invalidateQueries({ queryKey: planKeys.userPlans(user.id) })
         queryClient.invalidateQueries({ queryKey: ['stats', user.id] })
         queryClient.invalidateQueries({ queryKey: planKeys.todaysTotalProgress(user.id, today) })
+        // Mark userPlans stale but don't refetch until Dashboard is visited
+        queryClient.invalidateQueries({ 
+          queryKey: planKeys.userPlans(user.id),
+          refetchType: 'none'
+        })
       }
     },
   })
@@ -823,19 +852,36 @@ export function useMarkSectionComplete() {
       if (!user) throw new Error('Not authenticated')
 
       const today = getLocalDate()
-      const newCompletedSections = toggleSection(existingProgress?.completed_sections || [], sectionId)
-      const isComplete = newCompletedSections.length >= totalSections
-      const isCompleteCalculator = (sections: string[]) => sections.length >= totalSections
 
-      if (existingProgress) {
-        const { data, error } = await (supabase
-          .from('daily_progress') as ReturnType<typeof supabase.from>)
+      // Always fetch existing progress by date (not day_number) to handle
+      // advancing to next reading on same day. The existingProgress param may be
+      // null if queried by day_number but record exists for same date.
+      let actualExisting = existingProgress
+      if (!actualExisting) {
+        const { data: existingByDate } = await getSupabase()
+          .from('daily_progress')
+          .select('*')
+          .eq('user_plan_id', userPlanId)
+          .eq('date', today)
+          .maybeSingle()
+        actualExisting = existingByDate as DailyProgress | null
+      }
+
+      // Re-calculate sections based on actual existing data
+      const actualCompletedSections = toggleSection(actualExisting?.completed_sections || [], sectionId)
+      const actualIsComplete = actualCompletedSections.length >= totalSections
+
+      if (actualExisting) {
+        // Update existing record
+        const { data, error } = await (getSupabase()
+          .from('daily_progress') as ReturnType<ReturnType<typeof getSupabase>['from']>)
           .update({
-            completed_sections: newCompletedSections,
-            is_complete: isComplete,
+            completed_sections: actualCompletedSections,
+            is_complete: actualIsComplete,
+            day_number: dayNumber, // Update to current day position
             updated_at: new Date().toISOString(),
           })
-          .eq('id', existingProgress.id)
+          .eq('id', actualExisting.id)
           .select()
           .single()
 
@@ -843,38 +889,21 @@ export function useMarkSectionComplete() {
         return data as DailyProgress
       }
 
-      // Try INSERT, handle duplicate key error gracefully
-      // This can happen if progress query timed out but record actually exists
-      const { data, error: insertError } = await (supabase
-        .from('daily_progress') as ReturnType<typeof supabase.from>)
+      // No existing record - insert new one
+      const { data, error } = await (getSupabase()
+        .from('daily_progress') as ReturnType<ReturnType<typeof getSupabase>['from']>)
         .insert({
           user_id: user.id,
           user_plan_id: userPlanId,
           day_number: dayNumber,
           date: today,
-          completed_sections: newCompletedSections,
-          is_complete: isComplete,
+          completed_sections: actualCompletedSections,
+          is_complete: actualIsComplete,
         })
         .select()
         .single()
 
-      if (insertError) {
-        // Try to handle duplicate key error
-        const handled = await handleDuplicateKeyAndUpdate(
-          insertError,
-          userPlanId,
-          today,
-          sectionId,
-          isCompleteCalculator,
-          dayNumber // Pass dayNumber so we can update it if needed
-        )
-        if (handled) {
-          return handled
-        }
-        // Not a duplicate key error, throw it
-        throw insertError
-      }
-
+      if (error) throw error
       return data as DailyProgress
     },
     onSuccess: (data, variables) => {
@@ -887,17 +916,39 @@ export function useMarkSectionComplete() {
       // Invalidate the specific day_number query as well
       queryClient.invalidateQueries({ queryKey: ['progressForPlanDay', variables.userPlanId, variables.dayNumber] })
 
-      // Always invalidate stats, allTodayProgress, and todaysTotalProgress when sections are marked
+      // Always invalidate stats and todaysTotalProgress when sections are marked (needed for ActivePlan)
       if (user) {
         queryClient.invalidateQueries({ queryKey: ['stats', user.id] })
-        queryClient.invalidateQueries({ queryKey: ['allTodayProgress', user.id, today] })
         queryClient.invalidateQueries({ queryKey: planKeys.todaysTotalProgress(user.id, today) })
-        queryClient.invalidateQueries({ queryKey: ['progressByDayNumber', user.id] })
+        
+        // Dashboard-only queries - mark stale but don't refetch until Dashboard is visited
+        queryClient.invalidateQueries({ 
+          queryKey: ['allTodayProgress', user.id, today],
+          refetchType: 'none'
+        })
+        queryClient.invalidateQueries({ 
+          queryKey: ['progressByDayNumber', user.id],
+          refetchType: 'none'
+        })
+        
+        // Guild queries - mark stale but don't refetch until Guild page is visited
+        queryClient.invalidateQueries({ 
+          queryKey: ['guildChapterCounts'],
+          refetchType: 'none'
+        })
+        queryClient.invalidateQueries({ 
+          queryKey: ['guilds', 'detail'],
+          refetchType: 'none'
+        })
       }
 
       if (data.is_complete && user) {
         queryClient.invalidateQueries({ queryKey: planKeys.userPlan(variables.userPlanId) })
-        queryClient.invalidateQueries({ queryKey: planKeys.userPlans(user.id) })
+        // Mark userPlans stale but don't refetch until Dashboard is visited
+        queryClient.invalidateQueries({ 
+          queryKey: planKeys.userPlans(user.id),
+          refetchType: 'none'
+        })
       }
     },
   })
@@ -1268,8 +1319,8 @@ export function useArchivePlan() {
     mutationFn: async (userPlanId: string) => {
       if (!user) throw new Error('Not authenticated')
 
-      const { data, error } = await (supabase
-        .from('user_plans') as ReturnType<typeof supabase.from>)
+      const { data, error } = await (getSupabase()
+        .from('user_plans') as ReturnType<ReturnType<typeof getSupabase>['from']>)
         .update({
           is_archived: true,
           archived_at: new Date().toISOString(),
@@ -1283,7 +1334,11 @@ export function useArchivePlan() {
     },
     onSuccess: () => {
       if (user) {
-        queryClient.invalidateQueries({ queryKey: planKeys.userPlans(user.id) })
+        // Mark userPlans stale but don't refetch until Dashboard is visited
+        queryClient.invalidateQueries({ 
+          queryKey: planKeys.userPlans(user.id),
+          refetchType: 'none'
+        })
       }
     },
   })
@@ -1298,8 +1353,8 @@ export function useUnarchivePlan() {
     mutationFn: async (userPlanId: string) => {
       if (!user) throw new Error('Not authenticated')
 
-      const { data, error} = await (supabase
-        .from('user_plans') as ReturnType<typeof supabase.from>)
+      const { data, error} = await (getSupabase()
+        .from('user_plans') as ReturnType<ReturnType<typeof getSupabase>['from']>)
         .update({
           is_archived: false,
           archived_at: null,
@@ -1313,7 +1368,11 @@ export function useUnarchivePlan() {
     },
     onSuccess: () => {
       if (user) {
-        queryClient.invalidateQueries({ queryKey: planKeys.userPlans(user.id) })
+        // Mark userPlans stale but don't refetch until Dashboard is visited
+        queryClient.invalidateQueries({ 
+          queryKey: planKeys.userPlans(user.id),
+          refetchType: 'none'
+        })
       }
     },
   })

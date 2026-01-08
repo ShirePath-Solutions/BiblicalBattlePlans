@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { supabase, withTimeout } from '../lib/supabase'
+import { getSupabase, safeQuery } from '../lib/supabase'
 import { useAuth } from './useAuth'
 import { getLocalDate, planKeys } from './usePlans'
 import type { FreeReadingChapter, BookCompletionStatus, ReadingPlan, FreeReadingStructure, DailyProgress } from '../types'
@@ -12,7 +12,7 @@ import {
 } from '../lib/bibleData'
 
 // Type helper for tables not yet in generated types
-type SupabaseFrom = ReturnType<typeof supabase.from>
+type SupabaseFrom = ReturnType<ReturnType<typeof getSupabase>['from']>
 
 // Query keys for free reading chapters
 export const freeReadingKeys = {
@@ -47,8 +47,8 @@ export function useFreeReadingChapters(userPlanId: string) {
   return useQuery({
     queryKey: freeReadingKeys.chapters(userPlanId),
     queryFn: async () => {
-      const result = await withTimeout(() =>
-        (supabase.from('free_reading_chapters') as SupabaseFrom)
+      const result = await safeQuery(() =>
+        (getSupabase().from('free_reading_chapters') as SupabaseFrom)
           .select('*')
           .eq('user_plan_id', userPlanId)
           .order('book')
@@ -129,7 +129,7 @@ export function useToggleChapter() {
 
       if (isCurrentlyCompleted) {
         // Remove the chapter (uncheck)
-        const { error } = await (supabase.from('free_reading_chapters') as SupabaseFrom)
+        const { error } = await (getSupabase().from('free_reading_chapters') as SupabaseFrom)
           .delete()
           .eq('user_plan_id', userPlanId)
           .eq('book', book)
@@ -139,7 +139,7 @@ export function useToggleChapter() {
         return { action: 'removed' as const, book, chapter }
       } else {
         // Add the chapter (check)
-        const { error } = await (supabase.from('free_reading_chapters') as SupabaseFrom)
+        const { error } = await (getSupabase().from('free_reading_chapters') as SupabaseFrom)
           .insert({
             user_plan_id: userPlanId,
             user_id: user.id,
@@ -184,7 +184,7 @@ export function useToggleBook() {
 
       if (isFullyComplete) {
         // Remove all chapters for this book (uncheck all)
-        const { error } = await (supabase.from('free_reading_chapters') as SupabaseFrom)
+        const { error } = await (getSupabase().from('free_reading_chapters') as SupabaseFrom)
           .delete()
           .eq('user_plan_id', userPlanId)
           .eq('book', book)
@@ -204,7 +204,7 @@ export function useToggleBook() {
             chapter,
           }))
 
-          const { error } = await (supabase.from('free_reading_chapters') as SupabaseFrom)
+          const { error } = await (getSupabase().from('free_reading_chapters') as SupabaseFrom)
             .insert(inserts)
 
           if (error) throw error
@@ -245,7 +245,7 @@ export function useSyncDailyProgress() {
       const today = getLocalDate()
 
       // Get today's progress
-      const { data: progressData, error: fetchError } = await supabase
+      const { data: progressData, error: fetchError } = await getSupabase()
         .from('daily_progress')
         .select('*')
         .eq('user_plan_id', userPlanId)
@@ -273,7 +273,7 @@ export function useSyncDailyProgress() {
       }
 
       if (existingProgress) {
-        const { error: updateError } = await (supabase.from('daily_progress') as SupabaseFrom)
+        const { error: updateError } = await (getSupabase().from('daily_progress') as SupabaseFrom)
           .update({
             completed_sections: completedSections,
             updated_at: new Date().toISOString(),
@@ -285,7 +285,7 @@ export function useSyncDailyProgress() {
           throw updateError
         }
       } else if (action === 'add') {
-        const { error: insertError } = await (supabase.from('daily_progress') as SupabaseFrom)
+        const { error: insertError } = await (getSupabase().from('daily_progress') as SupabaseFrom)
           .insert({
             user_id: user.id,
             user_plan_id: userPlanId,
@@ -302,7 +302,7 @@ export function useSyncDailyProgress() {
       }
 
       // Update running total in user_plans
-      const { data: currentPlan, error: planFetchError } = await supabase
+      const { data: currentPlan, error: planFetchError } = await getSupabase()
         .from('user_plans')
         .select('list_positions')
         .eq('id', userPlanId)
@@ -319,7 +319,7 @@ export function useSyncDailyProgress() {
         ? currentTotal + chaptersChanged
         : Math.max(0, currentTotal - chaptersChanged)
 
-      const { error: updatePlanError } = await (supabase.from('user_plans') as SupabaseFrom)
+      const { error: updatePlanError } = await (getSupabase().from('user_plans') as SupabaseFrom)
         .update({
           list_positions: { ...currentPositions, free: newTotal }
         })
@@ -340,9 +340,22 @@ export function useSyncDailyProgress() {
       queryClient.invalidateQueries({ queryKey: ['progressForPlanDay', variables.userPlanId] })
       queryClient.invalidateQueries({ queryKey: planKeys.userPlan(variables.userPlanId) })
       if (user) {
-        queryClient.invalidateQueries({ queryKey: planKeys.userPlans(user.id) })
         queryClient.invalidateQueries({ queryKey: planKeys.todaysTotalProgress(user.id, today) })
         queryClient.invalidateQueries({ queryKey: ['stats', user.id] })
+        // Dashboard-only queries - mark stale but don't refetch until Dashboard is visited
+        queryClient.invalidateQueries({ 
+          queryKey: planKeys.userPlans(user.id),
+          refetchType: 'none'
+        })
+        // Guild queries - mark stale but don't refetch until Guild page is visited
+        queryClient.invalidateQueries({ 
+          queryKey: ['guildChapterCounts'],
+          refetchType: 'none'
+        })
+        queryClient.invalidateQueries({ 
+          queryKey: ['guilds', 'detail'],
+          refetchType: 'none'
+        })
       }
     },
   })
@@ -371,7 +384,7 @@ export function useCheckAndCompletePlan() {
       const shouldBeComplete = completedChaptersCount >= totalChapters
 
       // Update completion status (handles both completing and uncompleting)
-      const { error } = await (supabase.from('user_plans') as SupabaseFrom)
+      const { error } = await (getSupabase().from('user_plans') as SupabaseFrom)
         .update({
           is_completed: shouldBeComplete,
           completed_at: shouldBeComplete ? new Date().toISOString() : null,
@@ -384,8 +397,12 @@ export function useCheckAndCompletePlan() {
     onSuccess: (_, variables) => {
       if (user) {
         queryClient.invalidateQueries({ queryKey: planKeys.userPlan(variables.userPlanId) })
-        queryClient.invalidateQueries({ queryKey: planKeys.userPlans(user.id) })
         queryClient.invalidateQueries({ queryKey: ['stats', user.id] })
+        // Mark userPlans stale but don't refetch until Dashboard is visited
+        queryClient.invalidateQueries({ 
+          queryKey: planKeys.userPlans(user.id),
+          refetchType: 'none'
+        })
       }
     },
   })
