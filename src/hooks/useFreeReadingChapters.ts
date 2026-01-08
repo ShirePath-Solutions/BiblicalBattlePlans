@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { getSupabase, withTimeout } from '../lib/supabase'
+import { getSupabase, safeQuery } from '../lib/supabase'
 import { useAuth } from './useAuth'
 import { getLocalDate, planKeys } from './usePlans'
 import type { FreeReadingChapter, BookCompletionStatus, ReadingPlan, FreeReadingStructure, DailyProgress } from '../types'
@@ -47,7 +47,7 @@ export function useFreeReadingChapters(userPlanId: string) {
   return useQuery({
     queryKey: freeReadingKeys.chapters(userPlanId),
     queryFn: async () => {
-      const result = await withTimeout(() =>
+      const result = await safeQuery(() =>
         (getSupabase().from('free_reading_chapters') as SupabaseFrom)
           .select('*')
           .eq('user_plan_id', userPlanId)

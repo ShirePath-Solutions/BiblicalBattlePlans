@@ -33,8 +33,8 @@ const noOpLock = async <T>(
  * Lightweight Supabase client configuration.
  *
  * Key design decisions:
- * 1. autoRefreshToken: false - We manually refresh tokens on tab visibility change
- *    to avoid GoTrueClient's internal timer/state management issues
+ * 1. autoRefreshToken: false - No background timers; tokens refresh on-demand
+ *    via safeQuery() when API calls detect expiry (see withAuthRetry)
  * 2. persistSession: true - Tokens stored in localStorage for session persistence
  * 3. detectSessionInUrl: true - Required for OAuth and password reset flows
  * 4. lock: noOpLock - Bypasses navigator.locks that cause deadlocks
@@ -48,7 +48,7 @@ function createSupabaseClient() {
     supabaseAnonKey || '',
     {
       auth: {
-        autoRefreshToken: false, // We handle refresh manually
+        autoRefreshToken: false, // No background timers; refresh on-demand via safeQuery()
         persistSession: true,
         detectSessionInUrl: true,
         lock: noOpLock,
@@ -85,10 +85,10 @@ const supabaseClient = getOrCreateClient()
  * Get the Supabase client instance.
  *
  * This is the primary way to access Supabase throughout the app.
- * The client is lightweight - we disabled autoRefreshToken and manage
- * auth state in our Zustand store. Use this for:
+ * The client is lightweight/transient - no background timers or connections.
+ * Use this for:
  * - Auth operations (signIn, signUp, etc.)
- * - Database queries
+ * - Database queries (wrap with safeQuery() for timeout + auth retry)
  */
 export function getSupabase(): SupabaseClient<Database> {
   return supabaseClient
@@ -141,4 +141,45 @@ export async function withTimeout<T>(
     clearTimeout(timeoutId!)
     throw error
   }
+}
+
+/**
+ * Retry a query once if it fails due to an expired token.
+ *
+ * With autoRefreshToken: false, tokens aren't refreshed automatically.
+ * When a query fails with a JWT error, we call getSession() which will
+ * use the refresh token to get a new access token, then retry the query.
+ *
+ * This keeps the Supabase client lightweight/transient while ensuring
+ * users aren't logged out after access token expiry (~1 hour).
+ */
+export async function withAuthRetry<T>(queryFn: () => PromiseLike<T>): Promise<T> {
+  try {
+    return await queryFn()
+  } catch (error: unknown) {
+    const pgError = error as { code?: string; message?: string }
+    // PGRST301 = JWT expired in PostgREST
+    if (pgError.code === 'PGRST301' || pgError.message?.includes('JWT expired')) {
+      // getSession() refreshes the token if expired
+      await getSupabase().auth.getSession()
+      return await queryFn()
+    }
+    throw error
+  }
+}
+
+/**
+ * Wraps a Supabase query with both timeout protection and auth retry.
+ *
+ * Use this for all database queries to ensure:
+ * 1. Queries don't hang indefinitely after tab suspension
+ * 2. Expired tokens are automatically refreshed on-demand
+ *
+ * Usage: await safeQuery(() => getSupabase().from('table').select('*'))
+ */
+export async function safeQuery<T>(
+  queryFn: () => PromiseLike<T>,
+  timeoutMs = 8000
+): Promise<T> {
+  return withAuthRetry(() => withTimeout(queryFn, timeoutMs))
 }

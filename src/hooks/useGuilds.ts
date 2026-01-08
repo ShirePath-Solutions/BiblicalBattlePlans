@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { getSupabase, withTimeout } from '../lib/supabase'
+import { getSupabase, safeQuery } from '../lib/supabase'
 import { useAuth } from './useAuth'
 import type { Guild, GuildMember, GuildWithMembers, UserGuildMembership, Profile, ReadingPlan } from '../types'
 
@@ -36,7 +36,7 @@ export function useMyGuilds() {
     queryFn: async () => {
       if (!user) return []
 
-      const { data, error } = await withTimeout(() =>
+      const { data, error } = await safeQuery(() =>
         getSupabase()
           .from('guild_members')
           .select(`
@@ -62,8 +62,8 @@ export function useGuild(guildId: string) {
   return useQuery({
     queryKey: guildKeys.detail(guildId),
     queryFn: async () => {
-      // Using withTimeout to prevent hanging promises after tab suspension
-      const { data, error } = await withTimeout(() =>
+      // Using safeQuery to prevent hanging promises after tab suspension
+      const { data, error } = await safeQuery(() =>
         getSupabase()
           .from('guilds')
           .select(`
@@ -108,9 +108,9 @@ export function useGuildByInviteCode(code: string) {
   return useQuery({
     queryKey: guildKeys.byInviteCode(code.toUpperCase()),
     queryFn: async () => {
-      // Using withTimeout to prevent hanging promises after tab suspension
+      // Using safeQuery to prevent hanging promises after tab suspension
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const rpcResult = await withTimeout(() =>
+      const rpcResult = await safeQuery(() =>
         (getSupabase().rpc as any)('get_guild_by_invite_code', {
           p_invite_code: code,
         })

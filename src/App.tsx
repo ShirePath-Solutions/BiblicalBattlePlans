@@ -16,8 +16,8 @@ import { queryClient } from './lib/queryClient'
  * When a tab returns from background after 5+ seconds, we invalidate the
  * React Query cache to trigger refetches of potentially stale data.
  *
- * Token refresh is handled automatically by the Supabase client when needed -
- * even with autoRefreshToken disabled, it will refresh on API calls if expired.
+ * Token refresh is handled on-demand by safeQuery() - when a query fails
+ * due to an expired token, it refreshes via getSession() and retries.
  *
  * See: https://github.com/supabase/supabase-js/issues/1594
  */

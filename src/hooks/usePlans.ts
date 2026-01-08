@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { getSupabase, withTimeout } from '../lib/supabase'
+import { getSupabase, safeQuery } from '../lib/supabase'
 import { useAuth } from './useAuth'
 import type { ReadingPlan, UserPlan, DailyProgress, DailyStructure, CyclingListsStructure, ListPositions, WeeklySectionalStructure } from '../types'
 
@@ -55,8 +55,8 @@ export function useReadingPlans() {
   return useQuery({
     queryKey: planKeys.list(),
     queryFn: async () => {
-      // Using withTimeout to prevent hanging promises after tab suspension
-      const { data, error } = await withTimeout(() =>
+      // Using safeQuery to prevent hanging promises after tab suspension
+      const { data, error } = await safeQuery(() =>
         getSupabase()
           .from('reading_plans')
           .select('*')
@@ -75,8 +75,8 @@ export function useReadingPlan(planId: string) {
   return useQuery({
     queryKey: planKeys.detail(planId),
     queryFn: async () => {
-      // Using withTimeout to prevent hanging promises after tab suspension
-      const { data, error } = await withTimeout(() =>
+      // Using safeQuery to prevent hanging promises after tab suspension
+      const { data, error } = await safeQuery(() =>
         getSupabase()
           .from('reading_plans')
           .select('*')
@@ -100,7 +100,7 @@ export function useUserPlans() {
     queryFn: async () => {
       if (!user) return []
 
-      const { data, error } = await withTimeout(() =>
+      const { data, error } = await safeQuery(() =>
         getSupabase()
           .from('user_plans')
           .select(`
@@ -123,8 +123,8 @@ export function useUserPlan(userPlanId: string) {
   return useQuery({
     queryKey: planKeys.userPlan(userPlanId),
     queryFn: async () => {
-      // Using withTimeout to prevent hanging promises after tab suspension
-      const { data, error } = await withTimeout(() =>
+      // Using safeQuery to prevent hanging promises after tab suspension
+      const { data, error } = await safeQuery(() =>
         getSupabase()
           .from('user_plans')
           .select(`
@@ -149,8 +149,8 @@ export function useDailyProgress(userPlanId: string, date?: string) {
   return useQuery({
     queryKey: planKeys.dailyProgress(userPlanId, targetDate),
     queryFn: async () => {
-      // Using withTimeout to prevent hanging promises after tab suspension
-      const { data, error } = await withTimeout(() =>
+      // Using safeQuery to prevent hanging promises after tab suspension
+      const { data, error } = await safeQuery(() =>
         getSupabase()
           .from('daily_progress')
           .select('*')
@@ -176,8 +176,8 @@ export function useProgressForPlanDay(userPlanId: string, dayNumber: number) {
   return useQuery({
     queryKey: ['progressForPlanDay', userPlanId, dayNumber],
     queryFn: async () => {
-      // Using withTimeout to prevent hanging promises after tab suspension
-      const { data, error } = await withTimeout(() =>
+      // Using safeQuery to prevent hanging promises after tab suspension
+      const { data, error } = await safeQuery(() =>
         getSupabase()
           .from('daily_progress')
           .select('*')
@@ -206,7 +206,7 @@ export function useAllTodayProgress() {
     queryFn: async () => {
       if (!user) return {}
 
-      const { data, error } = await withTimeout(() =>
+      const { data, error } = await safeQuery(() =>
         getSupabase()
           .from('daily_progress')
           .select('*')
@@ -252,7 +252,7 @@ export function useProgressByDayNumber() {
       cutoffDate.setDate(cutoffDate.getDate() - 30)
       const cutoff = cutoffDate.toISOString().split('T')[0]
 
-      const { data, error } = await withTimeout(() =>
+      const { data, error } = await safeQuery(() =>
         getSupabase()
           .from('daily_progress')
           .select('*')
@@ -315,7 +315,7 @@ export function useTodaysTotalChapters() {
       }
 
       // Fetch all progress for today across all plans
-      const result = await withTimeout(() =>
+      const result = await safeQuery(() =>
         (getSupabase()
           .from('daily_progress') as ReturnType<ReturnType<typeof getSupabase>['from']>)
           .select('*, user_plan:user_plans(current_day, plan:reading_plans(daily_structure))')
@@ -516,7 +516,7 @@ async function handleDuplicateKeyAndUpdate(
   }
 
   // Fetch the existing record (with timeout to prevent hanging)
-  const { data: actualExisting, error: fetchError } = await withTimeout(() =>
+  const { data: actualExisting, error: fetchError } = await safeQuery(() =>
     getSupabase()
       .from('daily_progress')
       .select('*')
@@ -560,7 +560,7 @@ async function handleDuplicateKeyAndUpdate(
     updateData.day_number = targetDayNumber
   }
 
-  const updateResult = await withTimeout(() =>
+  const updateResult = await safeQuery(() =>
     (getSupabase().from('daily_progress') as ReturnType<ReturnType<typeof getSupabase>['from']>)
       .update(updateData)
       .eq('id', existing.id)
