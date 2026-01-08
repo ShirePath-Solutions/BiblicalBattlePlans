@@ -119,16 +119,26 @@ export const useAuth = create<AuthStore>((set, get) => ({
       const isRecoveryFromUrl = !!(hash && hash.includes('type=recovery'))
       const hasAccessToken = !!(hash && hash.includes('access_token'))
 
-      // If URL contains auth tokens (OAuth or recovery), let Supabase process them
+      // If URL contains auth tokens (OAuth or recovery), poll for session
       // This happens automatically via detectSessionInUrl: true in client config
-      // We just need to wait a moment for it to process
+      // We poll instead of using a fixed delay to handle slow devices/networks
+      let session = null
       if (hasAccessToken) {
-        // Small delay to let Supabase process the URL tokens
-        await new Promise(resolve => setTimeout(resolve, 100))
+        const maxAttempts = 10
+        const delayMs = 100
+        for (let attempt = 0; attempt < maxAttempts; attempt++) {
+          const { data } = await getSupabase().auth.getSession()
+          if (data.session) {
+            session = data.session
+            break
+          }
+          await new Promise(resolve => setTimeout(resolve, delayMs))
+        }
+      } else {
+        // No URL tokens - just get session from storage
+        const { data } = await getSupabase().auth.getSession()
+        session = data.session
       }
-
-      // Get session (from localStorage or freshly processed from URL)
-      const { data: { session } } = await getSupabase().auth.getSession()
 
       if (session?.user) {
         // Handle new OAuth sign-ins (sync profile data)
