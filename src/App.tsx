@@ -17,7 +17,7 @@ import { queryClient } from './lib/queryClient'
  * React Query cache to trigger refetches of potentially stale data.
  *
  * Token refresh is handled on-demand by safeQuery() - when a query fails
- * due to an expired token, it refreshes via getSession() and retries.
+ * due to an expired token, it calls refreshSession() and retries.
  *
  * See: https://github.com/supabase/supabase-js/issues/1594
  */

@@ -85,13 +85,18 @@ const syncProfileFromMetadata = async (user: User): Promise<void> => {
     }
 
     if (usernameToSet) {
-      await (getSupabase()
+      const { error } = await (getSupabase()
         .from('profiles') as ReturnType<ReturnType<typeof getSupabase>['from']>)
         .update({
           username: usernameToSet,
           display_name: displayNameToSet,
         })
         .eq('id', user.id)
+
+      if (error) {
+        // Log but don't throw - user can update their profile manually
+        captureError(error, { component: 'useAuth', action: 'syncProfileFromMetadata', userId: user.id })
+      }
     }
   }
 

@@ -147,8 +147,8 @@ export async function withTimeout<T>(
  * Retry a query once if it fails due to an expired token.
  *
  * With autoRefreshToken: false, tokens aren't refreshed automatically.
- * When a query fails with a JWT error, we call getSession() which will
- * use the refresh token to get a new access token, then retry the query.
+ * When a query fails with a JWT error, we call refreshSession() to get
+ * a new access token using the refresh token, then retry the query.
  *
  * This keeps the Supabase client lightweight/transient while ensuring
  * users aren't logged out after access token expiry (~1 hour).
@@ -160,8 +160,8 @@ export async function withAuthRetry<T>(queryFn: () => PromiseLike<T>): Promise<T
     const pgError = error as { code?: string; message?: string }
     // PGRST301 = JWT expired in PostgREST
     if (pgError.code === 'PGRST301' || pgError.message?.includes('JWT expired')) {
-      // getSession() refreshes the token if expired
-      await getSupabase().auth.getSession()
+      // refreshSession() explicitly gets a new access token using the refresh token
+      await getSupabase().auth.refreshSession()
       return await queryFn()
     }
     throw error
