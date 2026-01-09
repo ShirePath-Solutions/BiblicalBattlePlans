@@ -1430,9 +1430,8 @@ export function useAutoAdvanceCompletedPlans() {
             // This plan has completed progress from a previous day - auto-advance
             const maxDay = userPlan.plan.duration_days || 365
             const newDay = Math.min(userPlan.current_day + 1, maxDay)
-            // Only mark as complete if the day actually advanced AND reached the max day
-            const dayAdvanced = newDay > userPlan.current_day
-            const isNowComplete = dayAdvanced && newDay >= maxDay
+            // Mark as complete once the plan reaches or exceeds its maximum day
+            const isNowComplete = newDay >= maxDay
 
             await safeQuery(() =>
               (getSupabase()
@@ -1457,6 +1456,7 @@ export function useAutoAdvanceCompletedPlans() {
     },
     onSuccess: (result) => {
       if (result.advanced.length > 0 && user) {
+        const today = getLocalDate()
         // Invalidate affected queries to show updated data
         queryClient.invalidateQueries({ queryKey: planKeys.userPlans(user.id) })
         for (const planId of result.advanced) {
@@ -1464,6 +1464,8 @@ export function useAutoAdvanceCompletedPlans() {
           queryClient.invalidateQueries({ queryKey: ['progressForPlanDay', planId] })
         }
         queryClient.invalidateQueries({ queryKey: ['progressByDayNumber', user.id] })
+        queryClient.invalidateQueries({ queryKey: planKeys.todaysTotalProgress(user.id, today) })
+        queryClient.invalidateQueries({ queryKey: ['stats', user.id] })
       }
     },
   })
