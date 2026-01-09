@@ -1,7 +1,8 @@
+import { useEffect, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import { BookOpen, Swords, Trophy, Plus, Book, Play } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
-import { useUserPlans, useAllTodayProgress, useProgressByDayNumber, getProgressForCurrentDay, getCurrentReadings, getTodaysReading, calculatePlanProgress } from '../hooks/usePlans'
+import { useUserPlans, useAllTodayProgress, useProgressByDayNumber, getProgressForCurrentDay, getCurrentReadings, getTodaysReading, calculatePlanProgress, useAutoAdvanceCompletedPlans } from '../hooks/usePlans'
 import { useStats } from '../hooks/useStats'
 import { useVerseOfDay } from '../hooks/useVerseOfDay'
 import { Card, CardContent, Button, StreakBadge, LoadingSpinner, ProgressBar } from '../components/ui'
@@ -14,6 +15,16 @@ export function Dashboard() {
   const { data: dailyVerse, isLoading: verseLoading } = useVerseOfDay()
   const { data: todayProgressMap = {} } = useAllTodayProgress()
   const { data: progressByDayNumber = {} } = useProgressByDayNumber()
+  const autoAdvance = useAutoAdvanceCompletedPlans()
+  const hasAutoAdvanced = useRef(false)
+
+  // Auto-advance completed plans from previous days on first load
+  useEffect(() => {
+    if (userPlans && userPlans.length > 0 && !hasAutoAdvanced.current && !autoAdvance.isPending) {
+      hasAutoAdvanced.current = true
+      autoAdvance.mutate(userPlans)
+    }
+  }, [userPlans, autoAdvance])
 
   const isLoading = plansLoading || statsLoading
   const error = plansError || statsError

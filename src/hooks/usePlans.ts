@@ -1369,10 +1369,96 @@ export function useUnarchivePlan() {
     onSuccess: () => {
       if (user) {
         // Mark userPlans stale but don't refetch until Dashboard is visited
-        queryClient.invalidateQueries({ 
+        queryClient.invalidateQueries({
           queryKey: planKeys.userPlans(user.id),
           refetchType: 'none'
         })
+      }
+    },
+  })
+}
+
+/**
+ * Auto-advance plans that were completed on a previous day but not advanced.
+ *
+ * This solves the UX issue where users complete their reading, forget to click
+ * "Continue to Next Reading", and see yesterday's completed reading the next day.
+ *
+ * Only affects day-based plans (sequential, sectional, weekly_sectional).
+ * Cycling and free_reading plans are excluded as they don't have day progression.
+ *
+ * Called on Dashboard mount to ensure users see today's reading immediately.
+ */
+export function useAutoAdvanceCompletedPlans() {
+  const queryClient = useQueryClient()
+  const { user } = useAuth()
+
+  return useMutation({
+    mutationFn: async (userPlans: (UserPlan & { plan: ReadingPlan })[]) => {
+      if (!user || !userPlans.length) return { advanced: [] }
+
+      const today = getLocalDate()
+      const advancedPlanIds: string[] = []
+
+      // Filter for day-based plans only (exclude cycling and free_reading)
+      const dayBasedPlans = userPlans.filter(up => {
+        const type = up.plan.daily_structure.type
+        return (
+          !up.is_completed &&
+          !up.is_archived &&
+          (type === 'sequential' || type === 'sectional' || type === 'weekly_sectional')
+        )
+      })
+
+      for (const userPlan of dayBasedPlans) {
+        // Check if there's completed progress for the current day from a previous date
+        const { data: progressData } = await safeQuery(() =>
+          getSupabase()
+            .from('daily_progress')
+            .select('*')
+            .eq('user_plan_id', userPlan.id)
+            .eq('day_number', userPlan.current_day)
+            .eq('is_complete', true)
+            .lt('date', today) // Completed on a day before today
+            .order('date', { ascending: false })
+            .limit(1)
+            .maybeSingle()
+        )
+
+        if (progressData) {
+          // This plan has completed progress from a previous day - auto-advance
+          const maxDay = userPlan.plan.duration_days || 365
+          const newDay = Math.min(userPlan.current_day + 1, maxDay)
+          // Only mark as complete if the day actually advanced AND reached the max day
+          const dayAdvanced = newDay > userPlan.current_day
+          const isNowComplete = dayAdvanced && newDay >= maxDay
+
+          await safeQuery(() =>
+            (getSupabase()
+              .from('user_plans') as ReturnType<ReturnType<typeof getSupabase>['from']>)
+              .update({
+                current_day: newDay,
+                is_completed: isNowComplete,
+                completed_at: isNowComplete ? new Date().toISOString() : null,
+              })
+              .eq('id', userPlan.id)
+          )
+
+          advancedPlanIds.push(userPlan.id)
+        }
+      }
+
+      return { advanced: advancedPlanIds }
+    },
+    onSuccess: (result) => {
+      if (result.advanced.length > 0 && user) {
+        // Invalidate affected queries to show updated data
+        queryClient.invalidateQueries({ queryKey: planKeys.userPlans(user.id) })
+        for (const planId of result.advanced) {
+          queryClient.invalidateQueries({ queryKey: planKeys.userPlan(planId) })
+          queryClient.invalidateQueries({ queryKey: ['progressForPlanDay', planId] })
+        }
+        queryClient.invalidateQueries({ queryKey: ['progressByDayNumber', user.id] })
       }
     },
   })
