@@ -4,7 +4,7 @@ import { toast } from 'sonner'
 import { Trash2, Shield, Bell, BellOff } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
 import { useStats } from '../hooks/useStats'
-import { useLocalNotifications } from '../hooks'
+import { useLocalNotifications, DAILY_REMINDER_ID } from '../hooks/useLocalNotifications'
 import { captureError } from '../lib/errorLogger'
 import { ProfileHeader, ProfileStats, CampaignHistory } from '../components/profile'
 import { Card, CardHeader, CardContent, CardFooter, Button, Input, LoadingSpinner, Modal } from '../components/ui'
@@ -75,10 +75,13 @@ export function Profile() {
     const checkNotifications = async () => {
       if (!notifications.isNative || !notifications.hasPermission) return
       const pending = await notifications.getPending()
-      setNotificationEnabled(pending.length > 0)
+      // Only check if the daily reminder notification (ID: 1) is scheduled
+      const hasDailyReminder = pending.some(notif => notif.id === DAILY_REMINDER_ID)
+      setNotificationEnabled(hasDailyReminder)
     }
     checkNotifications()
-  }, [notifications.isNative, notifications.hasPermission, notifications.getPending])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [notifications.isNative, notifications.hasPermission])
 
   // Parse streak minimum with validation, clamping between 1-20
   const getValidStreakMinimum = (value: string): number => {

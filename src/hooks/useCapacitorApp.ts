@@ -17,6 +17,9 @@ export function useCapacitorApp() {
       return
     }
 
+    // Track if component is mounted to avoid race conditions
+    let isMounted = true
+
     // Initialize native plugins
     const initializeNative = async () => {
       try {
@@ -35,26 +38,38 @@ export function useCapacitorApp() {
     initializeNative()
 
     // Handle app state changes (foreground/background)
-    const appStateListener = App.addListener('appStateChange', ({ isActive }) => {
-      if (isActive) {
-        // App came to foreground - refresh stale data
-        // Only invalidate queries that are actually stale to avoid unnecessary refetches
-        queryClient.invalidateQueries({ stale: true })
-      }
-    })
+    // Store listener setup in async function to properly handle cleanup
+    let appStateListener: any
+    let backButtonListener: any
 
-    // Handle back button (primarily for Android, but good to set up)
-    const backButtonListener = App.addListener('backButton', ({ canGoBack }) => {
-      if (canGoBack) {
-        window.history.back()
-      }
-      // At root of app - iOS doesn't have back button anyway
-    })
+    const setupListeners = async () => {
+      if (!isMounted) return
+
+      appStateListener = await App.addListener('appStateChange', ({ isActive }) => {
+        // Only invalidate queries if component is still mounted
+        if (isActive && isMounted) {
+          // App came to foreground - refresh stale data
+          // Only invalidate queries that are actually stale to avoid unnecessary refetches
+          queryClient.invalidateQueries({ stale: true })
+        }
+      })
+
+      // Handle back button (primarily for Android, but good to set up)
+      backButtonListener = await App.addListener('backButton', ({ canGoBack }) => {
+        if (canGoBack) {
+          window.history.back()
+        }
+        // At root of app - iOS doesn't have back button anyway
+      })
+    }
+
+    setupListeners()
 
     // Cleanup listeners on unmount
     return () => {
-      appStateListener.then((listener) => listener.remove())
-      backButtonListener.then((listener) => listener.remove())
+      isMounted = false
+      if (appStateListener) appStateListener.remove()
+      if (backButtonListener) backButtonListener.remove()
     }
   }, [])
 }

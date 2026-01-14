@@ -4,6 +4,12 @@ import { LocalNotifications } from '@capacitor/local-notifications'
 import type { ScheduleOptions } from '@capacitor/local-notifications'
 import { captureError } from '../lib/errorLogger'
 
+// Notification constants
+export const DAILY_REMINDER_ID = 1
+const DAILY_REMINDER_TITLE = 'Daily Quest Awaits'
+const DAILY_REMINDER_BODY = "Keep your streak alive! Time to continue your journey through God's Word"
+const DAILY_REMINDER_ACTION_TYPE = 'DAILY_REMINDER'
+
 /**
  * Helper function to create the daily reminder notification configuration
  */
@@ -11,9 +17,9 @@ function createDailyReminderNotification(hour: number, minute: number): Schedule
   return {
     notifications: [
       {
-        id: 1,
-        title: 'Daily Quest Awaits',
-        body: "Keep your streak alive! Time to continue your journey through God's Word",
+        id: DAILY_REMINDER_ID,
+        title: DAILY_REMINDER_TITLE,
+        body: DAILY_REMINDER_BODY,
         schedule: {
           on: {
             hour,
@@ -23,7 +29,7 @@ function createDailyReminderNotification(hour: number, minute: number): Schedule
           allowWhileIdle: true,
         },
         sound: undefined, // Use system default
-        actionTypeId: 'DAILY_REMINDER',
+        actionTypeId: DAILY_REMINDER_ACTION_TYPE,
         extra: {
           type: 'daily_reminder',
         },
@@ -97,7 +103,7 @@ export function useLocalNotifications() {
 
       try {
         // Cancel any existing daily reminder
-        await LocalNotifications.cancel({ notifications: [{ id: 1 }] })
+        await LocalNotifications.cancel({ notifications: [{ id: DAILY_REMINDER_ID }] })
 
         // Schedule new daily reminder
         const notifications = createDailyReminderNotification(hour, minute)
@@ -129,7 +135,7 @@ export function useLocalNotifications() {
     if (!isNative) return
 
     try {
-      await LocalNotifications.cancel({ notifications: [{ id: 1 }] })
+      await LocalNotifications.cancel({ notifications: [{ id: DAILY_REMINDER_ID }] })
 
       // Remove reminder enabled flag
       localStorage.removeItem('dailyReminderEnabled')
@@ -155,7 +161,7 @@ export function useLocalNotifications() {
         await LocalNotifications.schedule({
           notifications: [
             {
-              id: Math.floor(Math.random() * 100000),
+              id: Date.now(), // Use timestamp for unique ID
               title,
               body,
               schedule: {
@@ -204,7 +210,7 @@ export function useLocalNotifications() {
       const today = new Date().toLocaleDateString('en-CA') // YYYY-MM-DD
 
       // Cancel the notification
-      await LocalNotifications.cancel({ notifications: [{ id: 1 }] })
+      await LocalNotifications.cancel({ notifications: [{ id: DAILY_REMINDER_ID }] })
 
       // Store that reading was completed today
       localStorage.setItem('lastReadingCompleteDate', today)

@@ -78,6 +78,9 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
     const haptics = useHaptics()
 
     const handleClick = (e: React.MouseEvent<HTMLButtonElement>) => {
+      // Don't trigger haptics or onClick if button is disabled
+      if (isDisabled) return
+
       // Trigger haptic feedback based on button variant
       if (variant === 'danger') {
         haptics.heavy()
