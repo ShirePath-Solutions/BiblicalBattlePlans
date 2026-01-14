@@ -1,11 +1,13 @@
 import { useCallback } from 'react'
 import { Capacitor } from '@capacitor/core'
 import { Haptics, ImpactStyle, NotificationType } from '@capacitor/haptics'
+import { captureError } from '../lib/errorLogger'
 
 /**
  * Hook for haptic feedback on native platforms.
  * Provides different haptic patterns for various interactions.
- * No-ops on web platforms.
+ * No-ops on web platforms. Errors are silently captured - haptics
+ * should never interrupt the user experience.
  */
 export function useHaptics() {
   const isNative = Capacitor.isNativePlatform()
@@ -17,8 +19,9 @@ export function useHaptics() {
     if (!isNative) return
     try {
       await Haptics.impact({ style: ImpactStyle.Light })
-    } catch (error) {
-      console.error('Haptics error:', error)
+    } catch (err) {
+      // Silently capture - haptic failures shouldn't disrupt UX
+      captureError(err, { component: 'useHaptics', action: 'light' })
     }
   }, [isNative])
 
@@ -29,8 +32,8 @@ export function useHaptics() {
     if (!isNative) return
     try {
       await Haptics.impact({ style: ImpactStyle.Medium })
-    } catch (error) {
-      console.error('Haptics error:', error)
+    } catch (err) {
+      captureError(err, { component: 'useHaptics', action: 'medium' })
     }
   }, [isNative])
 
@@ -41,8 +44,8 @@ export function useHaptics() {
     if (!isNative) return
     try {
       await Haptics.impact({ style: ImpactStyle.Heavy })
-    } catch (error) {
-      console.error('Haptics error:', error)
+    } catch (err) {
+      captureError(err, { component: 'useHaptics', action: 'heavy' })
     }
   }, [isNative])
 
@@ -53,8 +56,8 @@ export function useHaptics() {
     if (!isNative) return
     try {
       await Haptics.notification({ type: NotificationType.Success })
-    } catch (error) {
-      console.error('Haptics error:', error)
+    } catch (err) {
+      captureError(err, { component: 'useHaptics', action: 'success' })
     }
   }, [isNative])
 
@@ -65,8 +68,8 @@ export function useHaptics() {
     if (!isNative) return
     try {
       await Haptics.notification({ type: NotificationType.Warning })
-    } catch (error) {
-      console.error('Haptics error:', error)
+    } catch (err) {
+      captureError(err, { component: 'useHaptics', action: 'warning' })
     }
   }, [isNative])
 
@@ -77,8 +80,8 @@ export function useHaptics() {
     if (!isNative) return
     try {
       await Haptics.notification({ type: NotificationType.Error })
-    } catch (error) {
-      console.error('Haptics error:', error)
+    } catch (err) {
+      captureError(err, { component: 'useHaptics', action: 'error' })
     }
   }, [isNative])
 
@@ -89,8 +92,8 @@ export function useHaptics() {
     if (!isNative) return
     try {
       await Haptics.selectionChanged()
-    } catch (error) {
-      console.error('Haptics error:', error)
+    } catch (err) {
+      captureError(err, { component: 'useHaptics', action: 'selectionChanged' })
     }
   }, [isNative])
 

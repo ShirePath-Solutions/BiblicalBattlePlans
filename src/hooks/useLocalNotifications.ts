@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { Capacitor } from '@capacitor/core'
 import { LocalNotifications } from '@capacitor/local-notifications'
 import type { ScheduleOptions } from '@capacitor/local-notifications'
+import { captureError } from '../lib/errorLogger'
 
 /**
  * Helper function to create the daily reminder notification configuration
@@ -50,8 +51,8 @@ export function useLocalNotifications() {
         if (result.display === 'granted') {
           setHasPermission(true)
         }
-      } catch (error) {
-        console.error('Error checking notification permissions:', error)
+      } catch (err) {
+        captureError(err, { component: 'useLocalNotifications', action: 'checkPermissions' })
       }
     }
 
@@ -76,8 +77,8 @@ export function useLocalNotifications() {
       const granted = result.display === 'granted'
       setHasPermission(granted)
       return granted
-    } catch (error) {
-      console.error('Error requesting notification permissions:', error)
+    } catch (err) {
+      captureError(err, { component: 'useLocalNotifications', action: 'requestPermission' })
       return false
     }
   }, [isNative])
@@ -111,13 +112,10 @@ export function useLocalNotifications() {
 
         // Clear the "already canceled today" flag so notification can be canceled when reading completes
         localStorage.removeItem('lastReadingCompleteDate')
-        if (import.meta.env.DEV) {
-          console.log('[Notifications] Scheduled daily reminder, cleared completion flag')
-        }
 
         return true
-      } catch (error) {
-        console.error('Error scheduling daily reminder:', error)
+      } catch (err) {
+        captureError(err, { component: 'useLocalNotifications', action: 'scheduleDailyReminder' })
         return false
       }
     },
@@ -138,8 +136,8 @@ export function useLocalNotifications() {
       localStorage.removeItem('dailyReminderHour')
       localStorage.removeItem('dailyReminderMinute')
       setReminderEnabled(false)
-    } catch (error) {
-      console.error('Error canceling daily reminder:', error)
+    } catch (err) {
+      captureError(err, { component: 'useLocalNotifications', action: 'cancelDailyReminder' })
     }
   }, [isNative])
 
@@ -167,8 +165,8 @@ export function useLocalNotifications() {
           ],
         })
         return true
-      } catch (error) {
-        console.error('Error sending notification:', error)
+      } catch (err) {
+        captureError(err, { component: 'useLocalNotifications', action: 'sendNow' })
         return false
       }
     },
@@ -184,8 +182,8 @@ export function useLocalNotifications() {
     try {
       const result = await LocalNotifications.getPending()
       return result.notifications
-    } catch (error) {
-      console.error('Error getting pending notifications:', error)
+    } catch (err) {
+      captureError(err, { component: 'useLocalNotifications', action: 'getPending' })
       return []
     }
   }, [isNative])
@@ -211,11 +209,8 @@ export function useLocalNotifications() {
       // Store that reading was completed today
       localStorage.setItem('lastReadingCompleteDate', today)
 
-      if (import.meta.env.DEV) {
-        console.log('[Notifications] Canceled notification for today (reading complete)')
-      }
-    } catch (error) {
-      console.error("Error canceling today's notification:", error)
+    } catch (err) {
+      captureError(err, { component: 'useLocalNotifications', action: 'cancelTodaysNotification' })
     }
   }, [isNative])
 
@@ -247,12 +242,9 @@ export function useLocalNotifications() {
 
         // Clear the completion flag for the new day
         localStorage.removeItem('lastReadingCompleteDate')
-        if (import.meta.env.DEV) {
-          console.log('[Notifications] Rescheduled notification for new day, cleared completion flag')
-        }
       }
-    } catch (error) {
-      console.error('Error rechecking/rescheduling notification:', error)
+    } catch (err) {
+      captureError(err, { component: 'useLocalNotifications', action: 'recheckAndReschedule' })
     }
   }, [isNative, reminderEnabled, hasPermission, getPending])
 

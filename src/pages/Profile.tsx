@@ -51,8 +51,7 @@ export function Profile() {
   const [isDeleting, setIsDeleting] = useState(false)
   const [deleteConfirmText, setDeleteConfirmText] = useState('')
   const [notificationEnabled, setNotificationEnabled] = useState(false)
-  const [reminderHour, setReminderHour] = useState('09')
-  const [reminderMinute, setReminderMinute] = useState('00')
+  const [reminderTime, setReminderTime] = useState('09:00')
 
   // Scroll to top when component mounts
   useEffect(() => {
@@ -66,9 +65,10 @@ export function Profile() {
     const savedHour = localStorage.getItem('dailyReminderHour')
     const savedMinute = localStorage.getItem('dailyReminderMinute')
 
-    if (savedHour) setReminderHour(savedHour.padStart(2, '0'))
-    if (savedMinute) setReminderMinute(savedMinute.padStart(2, '0'))
-  }, [])
+    if (savedHour && savedMinute) {
+      setReminderTime(`${savedHour.padStart(2, '0')}:${savedMinute.padStart(2, '0')}`)
+    }
+  }, [notifications.isNative])
 
   // Check if notifications are scheduled on mount
   useEffect(() => {
@@ -88,19 +88,21 @@ export function Profile() {
     return parsed
   }
 
-  // Time input validation handlers
-  const handleHourBlur = (e: React.FocusEvent<HTMLInputElement>) => {
-    const val = parseInt(e.target.value, 10)
-    if (!isNaN(val)) {
-      setReminderHour(val.toString().padStart(2, '0'))
+  // Parse time string into hour and minute
+  const parseReminderTime = (time: string): { hour: number; minute: number } => {
+    const [hourStr, minuteStr] = time.split(':')
+    return {
+      hour: parseInt(hourStr, 10) || 9,
+      minute: parseInt(minuteStr, 10) || 0,
     }
   }
 
-  const handleMinuteBlur = (e: React.FocusEvent<HTMLInputElement>) => {
-    const val = parseInt(e.target.value, 10)
-    if (!isNaN(val)) {
-      setReminderMinute(val.toString().padStart(2, '0'))
-    }
+  // Format time for display (12-hour format)
+  const formatTimeDisplay = (time: string): string => {
+    const { hour, minute } = parseReminderTime(time)
+    const period = hour >= 12 ? 'PM' : 'AM'
+    const displayHour = hour % 12 || 12
+    return `${displayHour}:${minute.toString().padStart(2, '0')} ${period}`
   }
 
   const handleSave = async () => {
@@ -129,24 +131,19 @@ export function Profile() {
     if (!notifications.hasPermission) {
       const granted = await notifications.requestPermission()
       if (!granted) {
-        toast.error('Notification permission denied')
+        toast.error('Notification permission denied. Please enable in Settings.')
         return
       }
     }
 
-    // Pad hour and minutes to ensure 2 digits
-    const hour = parseInt(reminderHour, 10)
-    const minute = parseInt(reminderMinute, 10)
-    setReminderHour(hour.toString().padStart(2, '0'))
-    setReminderMinute(minute.toString().padStart(2, '0'))
-
+    const { hour, minute } = parseReminderTime(reminderTime)
     const success = await notifications.scheduleDailyReminder(hour, minute)
 
     if (success) {
       setNotificationEnabled(true)
-      toast.success(`Daily reminder set for ${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`)
+      toast.success(`Daily reminder set for ${formatTimeDisplay(reminderTime)}`)
     } else {
-      toast.error('Failed to schedule notification')
+      toast.error('Failed to schedule notification. Please try again.')
     }
   }
 
@@ -501,43 +498,22 @@ export function Profile() {
                   </span>
                 </div>
                 <p className="font-pixel text-[0.625rem] text-ink-muted leading-relaxed">
-                  You'll receive a daily notification at {(reminderHour || '00').padStart(2, '0')}:{(reminderMinute || '00').padStart(2, '0')} to continue your Bible reading quest.
+                  You'll receive a daily notification at {formatTimeDisplay(reminderTime)} to continue your Bible reading quest.
                 </p>
               </div>
 
               {/* Edit Time */}
               <div className="space-y-3">
-                <label className="font-pixel text-[0.625rem] text-ink">
+                <label htmlFor="reminder-time-edit" className="font-pixel text-[0.625rem] text-ink">
                   CHANGE REMINDER TIME
                 </label>
-                <div className="flex items-center gap-3">
-                  <Input
-                    type="number"
-                    inputMode="numeric"
-                    min="0"
-                    max="23"
-                    value={reminderHour}
-                    onChange={(e) => setReminderHour(e.target.value)}
-                    onBlur={handleHourBlur}
-                    className="flex-1"
-                    placeholder="Hour"
-                  />
-                  <span className="font-pixel text-ink text-lg">:</span>
-                  <Input
-                    type="number"
-                    inputMode="numeric"
-                    min="0"
-                    max="59"
-                    value={reminderMinute}
-                    onChange={(e) => setReminderMinute(e.target.value)}
-                    onBlur={handleMinuteBlur}
-                    className="flex-1"
-                    placeholder="Min"
-                  />
-                </div>
-                <p className="font-pixel text-[0.5rem] text-ink-muted">
-                  Example: 9:00 for 9:00 AM, 21:00 for 9:00 PM
-                </p>
+                <input
+                  id="reminder-time-edit"
+                  type="time"
+                  value={reminderTime}
+                  onChange={(e) => setReminderTime(e.target.value)}
+                  className="w-full px-4 py-3 bg-parchment-light border-2 border-border-subtle font-pixel text-[0.75rem] text-ink focus:outline-none focus:border-sage focus:ring-2 focus:ring-sage/20"
+                />
               </div>
 
               {/* Actions */}
@@ -592,37 +568,16 @@ export function Profile() {
 
               {/* Time Picker */}
               <div className="space-y-3">
-                <label className="font-pixel text-[0.625rem] text-ink">
+                <label htmlFor="reminder-time-set" className="font-pixel text-[0.625rem] text-ink">
                   SET REMINDER TIME
                 </label>
-                <div className="flex items-center gap-3">
-                  <Input
-                    type="number"
-                    inputMode="numeric"
-                    min="0"
-                    max="23"
-                    value={reminderHour}
-                    onChange={(e) => setReminderHour(e.target.value)}
-                    onBlur={handleHourBlur}
-                    className="flex-1"
-                    placeholder="Hour"
-                  />
-                  <span className="font-pixel text-ink text-lg">:</span>
-                  <Input
-                    type="number"
-                    inputMode="numeric"
-                    min="0"
-                    max="59"
-                    value={reminderMinute}
-                    onChange={(e) => setReminderMinute(e.target.value)}
-                    onBlur={handleMinuteBlur}
-                    className="flex-1"
-                    placeholder="Min"
-                  />
-                </div>
-                <p className="font-pixel text-[0.5rem] text-ink-muted">
-                  Example: 9:00 for 9:00 AM, 21:00 for 9:00 PM
-                </p>
+                <input
+                  id="reminder-time-set"
+                  type="time"
+                  value={reminderTime}
+                  onChange={(e) => setReminderTime(e.target.value)}
+                  className="w-full px-4 py-3 bg-parchment-light border-2 border-border-subtle font-pixel text-[0.75rem] text-ink focus:outline-none focus:border-sage focus:ring-2 focus:ring-sage/20"
+                />
               </div>
 
               {/* Actions */}

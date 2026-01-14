@@ -3,8 +3,8 @@ import { Capacitor } from '@capacitor/core'
 import { App } from '@capacitor/app'
 import { StatusBar, Style } from '@capacitor/status-bar'
 import { SplashScreen } from '@capacitor/splash-screen'
-import { Keyboard } from '@capacitor/keyboard'
 import { queryClient } from '../lib/queryClient'
+import { captureError } from '../lib/errorLogger'
 
 /**
  * Initializes Capacitor plugins and handles native app lifecycle events.
@@ -28,7 +28,7 @@ export function useCapacitorApp() {
         // Hide splash screen after app is ready
         await SplashScreen.hide()
       } catch (error) {
-        console.error('Error initializing native plugins:', error)
+        captureError(error, { component: 'useCapacitorApp', action: 'initializeNative' })
       }
     }
 
@@ -38,7 +38,8 @@ export function useCapacitorApp() {
     const appStateListener = App.addListener('appStateChange', ({ isActive }) => {
       if (isActive) {
         // App came to foreground - refresh stale data
-        queryClient.invalidateQueries()
+        // Only invalidate queries that are actually stale to avoid unnecessary refetches
+        queryClient.invalidateQueries({ stale: true })
       }
     })
 
@@ -50,26 +51,10 @@ export function useCapacitorApp() {
       // At root of app - iOS doesn't have back button anyway
     })
 
-    // Handle keyboard events (for proper input focus management)
-    let keyboardShowListener: Promise<{ remove: () => void }> | null = null
-    let keyboardHideListener: Promise<{ remove: () => void }> | null = null
-
-    if (Capacitor.isPluginAvailable('Keyboard')) {
-      keyboardShowListener = Keyboard.addListener('keyboardWillShow', (info) => {
-        document.body.style.setProperty('--keyboard-height', `${info.keyboardHeight}px`)
-      })
-
-      keyboardHideListener = Keyboard.addListener('keyboardWillHide', () => {
-        document.body.style.setProperty('--keyboard-height', '0px')
-      })
-    }
-
     // Cleanup listeners on unmount
     return () => {
       appStateListener.then((listener) => listener.remove())
       backButtonListener.then((listener) => listener.remove())
-      keyboardShowListener?.then((listener) => listener.remove())
-      keyboardHideListener?.then((listener) => listener.remove())
     }
   }, [])
 }
