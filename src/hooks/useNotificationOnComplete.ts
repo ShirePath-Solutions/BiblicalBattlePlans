@@ -30,21 +30,25 @@ export function useNotificationOnComplete() {
     const alreadyCanceledToday = lastCanceledDate === today
     const reminderEnabled = localStorage.getItem('dailyReminderEnabled') === 'true'
 
-    console.log('[NotificationOnComplete] Check:', {
-      today,
-      totalChaptersToday,
-      streakMinimum,
-      isComplete,
-      lastCanceledDate,
-      alreadyCanceledToday,
-      reminderEnabled,
-    })
+    if (import.meta.env.DEV) {
+      console.log('[NotificationOnComplete] Check:', {
+        today,
+        totalChaptersToday,
+        streakMinimum,
+        isComplete,
+        lastCanceledDate,
+        alreadyCanceledToday,
+        reminderEnabled,
+      })
+    }
 
     // Only cancel once per day to avoid repeated cancellations
     if (isComplete && !alreadyCanceledToday && reminderEnabled) {
-      console.log('[NotificationOnComplete] ✅ Canceling notification - reading complete!')
+      if (import.meta.env.DEV) {
+        console.log('[NotificationOnComplete] ✅ Canceling notification - reading complete!')
+      }
       cancelTodaysNotification()
-    } else if (isComplete) {
+    } else if (isComplete && import.meta.env.DEV) {
       console.log('[NotificationOnComplete] ⏭️ Skipping cancel:', {
         alreadyCanceledToday,
         reminderEnabled,

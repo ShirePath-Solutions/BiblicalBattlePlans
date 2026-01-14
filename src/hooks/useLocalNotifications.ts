@@ -4,6 +4,34 @@ import { LocalNotifications } from '@capacitor/local-notifications'
 import type { ScheduleOptions } from '@capacitor/local-notifications'
 
 /**
+ * Helper function to create the daily reminder notification configuration
+ */
+function createDailyReminderNotification(hour: number, minute: number): ScheduleOptions {
+  return {
+    notifications: [
+      {
+        id: 1,
+        title: 'Daily Quest Awaits',
+        body: "Keep your streak alive! Time to continue your journey through God's Word",
+        schedule: {
+          on: {
+            hour,
+            minute,
+          },
+          repeats: true,
+          allowWhileIdle: true,
+        },
+        sound: undefined, // Use system default
+        actionTypeId: 'DAILY_REMINDER',
+        extra: {
+          type: 'daily_reminder',
+        },
+      },
+    ],
+  }
+}
+
+/**
  * Hook for managing local notifications (daily reading reminders).
  * Only works on native platforms.
  */
@@ -71,28 +99,7 @@ export function useLocalNotifications() {
         await LocalNotifications.cancel({ notifications: [{ id: 1 }] })
 
         // Schedule new daily reminder
-        const notifications: ScheduleOptions = {
-          notifications: [
-            {
-              id: 1,
-              title: 'Daily Quest Awaits',
-              body: "Keep your streak alive! Time to continue your journey through God's Word",
-              schedule: {
-                on: {
-                  hour,
-                  minute,
-                },
-                repeats: true,
-                allowWhileIdle: true,
-              },
-              sound: undefined, // Use system default
-              actionTypeId: 'DAILY_REMINDER',
-              extra: {
-                type: 'daily_reminder',
-              },
-            },
-          ],
-        }
+        const notifications = createDailyReminderNotification(hour, minute)
 
         await LocalNotifications.schedule(notifications)
 
@@ -104,7 +111,9 @@ export function useLocalNotifications() {
 
         // Clear the "already canceled today" flag so notification can be canceled when reading completes
         localStorage.removeItem('lastReadingCompleteDate')
-        console.log('[Notifications] Scheduled daily reminder, cleared completion flag')
+        if (import.meta.env.DEV) {
+          console.log('[Notifications] Scheduled daily reminder, cleared completion flag')
+        }
 
         return true
       } catch (error) {
@@ -202,9 +211,11 @@ export function useLocalNotifications() {
       // Store that reading was completed today
       localStorage.setItem('lastReadingCompleteDate', today)
 
-      console.log('[Notifications] Canceled notification for today (reading complete)')
+      if (import.meta.env.DEV) {
+        console.log('[Notifications] Canceled notification for today (reading complete)')
+      }
     } catch (error) {
-      console.error('Error canceling today\'s notification:', error)
+      console.error("Error canceling today's notification:", error)
     }
   }, [isNative])
 
@@ -230,34 +241,15 @@ export function useLocalNotifications() {
         const minute = parseInt(storedMinute, 10)
 
         // Reschedule the notification
-        const notifications: ScheduleOptions = {
-          notifications: [
-            {
-              id: 1,
-              title: 'Daily Quest Awaits',
-              body: "Keep your streak alive! Time to continue your journey through God's Word",
-              schedule: {
-                on: {
-                  hour,
-                  minute,
-                },
-                repeats: true,
-                allowWhileIdle: true,
-              },
-              sound: undefined,
-              actionTypeId: 'DAILY_REMINDER',
-              extra: {
-                type: 'daily_reminder',
-              },
-            },
-          ],
-        }
+        const notifications = createDailyReminderNotification(hour, minute)
 
         await LocalNotifications.schedule(notifications)
 
         // Clear the completion flag for the new day
         localStorage.removeItem('lastReadingCompleteDate')
-        console.log('[Notifications] Rescheduled notification for new day, cleared completion flag')
+        if (import.meta.env.DEV) {
+          console.log('[Notifications] Rescheduled notification for new day, cleared completion flag')
+        }
       }
     } catch (error) {
       console.error('Error rechecking/rescheduling notification:', error)

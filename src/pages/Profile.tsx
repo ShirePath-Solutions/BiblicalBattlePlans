@@ -68,7 +68,7 @@ export function Profile() {
 
     if (savedHour) setReminderHour(savedHour.padStart(2, '0'))
     if (savedMinute) setReminderMinute(savedMinute.padStart(2, '0'))
-  }, [notifications.isNative])
+  }, [])
 
   // Check if notifications are scheduled on mount
   useEffect(() => {
@@ -78,7 +78,7 @@ export function Profile() {
       setNotificationEnabled(pending.length > 0)
     }
     checkNotifications()
-  }, [notifications.isNative, notifications.hasPermission])
+  }, [notifications.isNative, notifications.hasPermission, notifications.getPending])
 
   // Parse streak minimum with validation, clamping between 1-20
   const getValidStreakMinimum = (value: string): number => {
@@ -86,6 +86,21 @@ export function Profile() {
     if (isNaN(parsed) || parsed < 1) return 1
     if (parsed > 20) return 20
     return parsed
+  }
+
+  // Time input validation handlers
+  const handleHourBlur = (e: React.FocusEvent<HTMLInputElement>) => {
+    const val = parseInt(e.target.value, 10)
+    if (!isNaN(val)) {
+      setReminderHour(val.toString().padStart(2, '0'))
+    }
+  }
+
+  const handleMinuteBlur = (e: React.FocusEvent<HTMLInputElement>) => {
+    const val = parseInt(e.target.value, 10)
+    if (!isNaN(val)) {
+      setReminderMinute(val.toString().padStart(2, '0'))
+    }
   }
 
   const handleSave = async () => {
@@ -486,7 +501,7 @@ export function Profile() {
                   </span>
                 </div>
                 <p className="font-pixel text-[0.625rem] text-ink-muted leading-relaxed">
-                  You'll receive a daily notification at {reminderHour.padStart(2, '0')}:{reminderMinute.padStart(2, '0')} to continue your Bible reading quest.
+                  You'll receive a daily notification at {(reminderHour || '00').padStart(2, '0')}:{(reminderMinute || '00').padStart(2, '0')} to continue your Bible reading quest.
                 </p>
               </div>
 
@@ -503,12 +518,7 @@ export function Profile() {
                     max="23"
                     value={reminderHour}
                     onChange={(e) => setReminderHour(e.target.value)}
-                    onBlur={(e) => {
-                      const val = parseInt(e.target.value, 10)
-                      if (!isNaN(val)) {
-                        setReminderHour(val.toString().padStart(2, '0'))
-                      }
-                    }}
+                    onBlur={handleHourBlur}
                     className="flex-1"
                     placeholder="Hour"
                   />
@@ -520,12 +530,7 @@ export function Profile() {
                     max="59"
                     value={reminderMinute}
                     onChange={(e) => setReminderMinute(e.target.value)}
-                    onBlur={(e) => {
-                      const val = parseInt(e.target.value, 10)
-                      if (!isNaN(val)) {
-                        setReminderMinute(val.toString().padStart(2, '0'))
-                      }
-                    }}
+                    onBlur={handleMinuteBlur}
                     className="flex-1"
                     placeholder="Min"
                   />
@@ -598,12 +603,7 @@ export function Profile() {
                     max="23"
                     value={reminderHour}
                     onChange={(e) => setReminderHour(e.target.value)}
-                    onBlur={(e) => {
-                      const val = parseInt(e.target.value, 10)
-                      if (!isNaN(val)) {
-                        setReminderHour(val.toString().padStart(2, '0'))
-                      }
-                    }}
+                    onBlur={handleHourBlur}
                     className="flex-1"
                     placeholder="Hour"
                   />
@@ -615,12 +615,7 @@ export function Profile() {
                     max="59"
                     value={reminderMinute}
                     onChange={(e) => setReminderMinute(e.target.value)}
-                    onBlur={(e) => {
-                      const val = parseInt(e.target.value, 10)
-                      if (!isNaN(val)) {
-                        setReminderMinute(val.toString().padStart(2, '0'))
-                      }
-                    }}
+                    onBlur={handleMinuteBlur}
                     className="flex-1"
                     placeholder="Min"
                   />
