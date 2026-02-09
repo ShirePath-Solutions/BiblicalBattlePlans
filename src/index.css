@@ -94,8 +94,6 @@ html {
   -moz-osx-font-smoothing: grayscale;
   height: 100%;
   overflow: hidden;
-  /* Support for safe area insets on iOS */
-  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
 }
 
 body {
@@ -350,6 +348,22 @@ body {
 .parchment-input:disabled {
   opacity: 0.6;
   cursor: not-allowed;
+}
+
+/* Time Input - iOS specific fixes */
+input[type="time"] {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+}
+
+/* Prevent iOS time picker from overflowing container */
+input[type="time"]::-webkit-date-and-time-value {
+  text-align: left;
+  padding: 0;
 }
 
 /* Badge */

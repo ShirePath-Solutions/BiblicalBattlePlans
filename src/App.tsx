@@ -4,9 +4,11 @@ import { SpeedInsights } from '@vercel/speed-insights/react'
 import { Analytics } from '@vercel/analytics/react'
 import { Toaster } from 'sonner'
 import { useAuth } from './hooks/useAuth'
+import { useCapacitorApp } from './hooks/useCapacitorApp'
+import { useNotificationOnComplete } from './hooks/useNotificationOnComplete'
 import { ProtectedRoute } from './components/auth'
 import { Layout } from './components/Layout'
-import { Landing, Login, Signup, ForgotPassword, ResetPassword, Dashboard, Plans, PlanDetail, ActivePlan, Profile, Acknowledgements, About, Feedback, GuildHub, Guild, GuildJoin } from './pages'
+import { Landing, Login, Signup, ForgotPassword, ResetPassword, Dashboard, Plans, PlanDetail, ActivePlan, Profile, Acknowledgements, About, Feedback, GuildHub, Guild, GuildJoin, Privacy, Support } from './pages'
 import { LoadingOverlay } from './components/ui'
 import { queryClient } from './lib/queryClient'
 
@@ -66,6 +68,21 @@ function ScrollToTop() {
   return null
 }
 
+/**
+ * App initialization hooks that need to run inside the Router context.
+ * This is separate because useCapacitorApp uses useNavigate which requires Router.
+ */
+function AppInitializer() {
+  // Initialize Capacitor native plugins and lifecycle handlers
+  // Must be inside Router because it uses useNavigate for deep links
+  useCapacitorApp()
+
+  // Auto-cancel notification when daily reading goal is met
+  useNotificationOnComplete()
+
+  return null
+}
+
 function App() {
   const { initialize, isInitialized, user } = useAuth()
 
@@ -83,6 +100,7 @@ function App() {
 
   return (
     <BrowserRouter>
+      <AppInitializer />
       <ScrollToTop />
       <SpeedInsights />
       <Analytics />
@@ -111,8 +129,10 @@ function App() {
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password" element={<ResetPassword />} />
 
-        {/* Public info page */}
+        {/* Public info pages */}
         <Route path="/about" element={<About />} />
+        <Route path="/privacy" element={<Privacy />} />
+        <Route path="/support" element={<Support />} />
 
         {/* Protected routes */}
         <Route
