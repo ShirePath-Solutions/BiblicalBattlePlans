@@ -36,11 +36,21 @@ export async function callSyncReadingStats(
   today: string,
   streakMinimum: number
 ): Promise<Partial<UserStats> | null> {
-  const { data } = await (getSupabase().rpc as Function)('sync_reading_stats', {
-    p_user_id: userId,
-    p_today: today,
-    p_streak_minimum: streakMinimum,
-  })
+  const { data, error } = await safeQuery<{ data: unknown; error: { message: string } | null }>(() =>
+    (getSupabase().rpc as Function)('sync_reading_stats', {
+      p_user_id: userId,
+      p_today: today,
+      p_streak_minimum: streakMinimum,
+    })
+  )
+
+  if (error) throw error
+
+  // Guard against the RPC returning an error payload inside the JSON
+  if (data && typeof data === 'object' && 'error' in (data as Record<string, unknown>)) {
+    throw new Error(String((data as Record<string, unknown>).error) || 'sync_reading_stats returned an error')
+  }
+
   return data as Partial<UserStats> | null
 }
 
@@ -634,6 +644,7 @@ export function useMarkChapterRead() {
           .from('daily_progress') as ReturnType<ReturnType<typeof getSupabase>['from']>)
           .update({
             completed_sections: completedSections,
+            streak_minimum: profile?.streak_minimum ?? 3,
             updated_at: new Date().toISOString(),
           })
           .eq('id', existingProgress.id)
@@ -876,7 +887,7 @@ export function useMarkSectionComplete() {
 
       const today = getLocalDate()
 
-      // Look up existing progress by day_number (not date) to avoid overwriting
+      // Look up existing progress by day_number AND date to avoid overwriting
       // records from other days completed on the same calendar date.
       let actualExisting = existingProgress
       if (!actualExisting) {
@@ -885,6 +896,7 @@ export function useMarkSectionComplete() {
           .select('*')
           .eq('user_plan_id', userPlanId)
           .eq('day_number', dayNumber)
+          .eq('date', today)
           .maybeSingle()
         actualExisting = existingByDay as DailyProgress | null
       }
@@ -900,6 +912,7 @@ export function useMarkSectionComplete() {
           .update({
             completed_sections: actualCompletedSections,
             is_complete: actualIsComplete,
+            streak_minimum: profile?.streak_minimum ?? 3,
             updated_at: new Date().toISOString(),
           })
           .eq('id', actualExisting.id)

@@ -473,7 +473,8 @@ BEGIN
     shields_used_in_streak
   INTO v_profile
   FROM profiles
-  WHERE id = p_user_id;
+  WHERE id = p_user_id
+  FOR UPDATE;
 
   IF NOT FOUND THEN
     RETURN jsonb_build_object('error', 'User not found');
@@ -633,20 +634,18 @@ BEGIN
   FROM daily_progress dp
   WHERE dp.user_id = p_user_id;
 
-  SELECT COUNT(DISTINCT dp.date)
+  SELECT COUNT(*)
   INTO v_total_days
-  FROM daily_progress dp
-  WHERE dp.user_id = p_user_id
-    AND (
-      SELECT COALESCE(SUM(calculate_chapters_for_progress(dp2.completed_sections, dp2.user_plan_id)), 0)
-      FROM daily_progress dp2
-      WHERE dp2.user_id = p_user_id AND dp2.date = dp.date
-    ) >= COALESCE(
-      (SELECT MIN(COALESCE(dp3.streak_minimum, p_streak_minimum))
-       FROM daily_progress dp3
-       WHERE dp3.user_id = p_user_id AND dp3.date = dp.date),
-      p_streak_minimum
-    );
+  FROM (
+    SELECT
+      dp.date,
+      SUM(calculate_chapters_for_progress(dp.completed_sections, dp.user_plan_id)) AS day_chapters,
+      MIN(COALESCE(dp.streak_minimum, p_streak_minimum)) AS day_minimum
+    FROM daily_progress dp
+    WHERE dp.user_id = p_user_id
+    GROUP BY dp.date
+  ) per_day
+  WHERE per_day.day_chapters >= per_day.day_minimum;
 
   -- 7. Update profile
   UPDATE profiles SET

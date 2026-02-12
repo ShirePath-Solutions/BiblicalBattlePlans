@@ -31,15 +31,22 @@ export function Dashboard() {
   const hasSyncedStats = useRef(false)
   useEffect(() => {
     if (user && profile && !hasSyncedStats.current) {
-      hasSyncedStats.current = true
-      callSyncReadingStats(user.id, getLocalDate(), profile.streak_minimum ?? 3).then((data) => {
-        if (data) {
-          queryClient.setQueryData(['stats', user.id], (prev: UserStats | undefined) => ({
-            ...(prev ?? {}),
-            ...data,
-          }))
+      const syncStats = async () => {
+        try {
+          const data = await callSyncReadingStats(user.id, getLocalDate(), profile.streak_minimum ?? 3)
+          if (data) {
+            queryClient.setQueryData(['stats', user.id], (prev: UserStats | undefined) => ({
+              ...(prev ?? {}),
+              ...data,
+            }))
+          }
+          hasSyncedStats.current = true
+        } catch (error) {
+          // Don't flip hasSyncedStats so a future render can retry
+          console.error('Failed to sync reading stats on dashboard mount', error)
         }
-      })
+      }
+      syncStats()
     }
   }, [user, profile])
 
