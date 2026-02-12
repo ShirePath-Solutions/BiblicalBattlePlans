@@ -2,11 +2,12 @@ import { useEffect, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import { BookOpen, Swords, Trophy, Plus, Book, Play } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
-import { useUserPlans, useAllTodayProgress, useProgressByDayNumber, getProgressForCurrentDay, getCurrentReadings, getTodaysReading, calculatePlanProgress, useAutoAdvanceCompletedPlans } from '../hooks/usePlans'
+import { useUserPlans, useAllTodayProgress, useProgressByDayNumber, getProgressForCurrentDay, getCurrentReadings, getTodaysReading, calculatePlanProgress, useAutoAdvanceCompletedPlans, getLocalDate, callSyncReadingStats } from '../hooks/usePlans'
 import { useStats } from '../hooks/useStats'
 import { useVerseOfDay } from '../hooks/useVerseOfDay'
 import { Card, CardContent, Button, StreakBadge, LoadingSpinner, ProgressBar } from '../components/ui'
 import { queryClient } from '../lib/queryClient'
+import type { UserStats } from '../types'
 
 export function Dashboard() {
   const { profile, user } = useAuth()
@@ -25,6 +26,22 @@ export function Dashboard() {
       autoAdvance.mutate(userPlans)
     }
   }, [userPlans, autoAdvance.isPending, autoAdvance.mutate])
+
+  // Stale streak detection: sync stats on mount to catch streaks broken while app was closed
+  const hasSyncedStats = useRef(false)
+  useEffect(() => {
+    if (user && profile && !hasSyncedStats.current) {
+      hasSyncedStats.current = true
+      callSyncReadingStats(user.id, getLocalDate(), profile.streak_minimum ?? 3).then((data) => {
+        if (data) {
+          queryClient.setQueryData(['stats', user.id], (prev: UserStats | undefined) => ({
+            ...(prev ?? {}),
+            ...data,
+          }))
+        }
+      })
+    }
+  }, [user, profile])
 
   const isLoading = plansLoading || statsLoading
   const error = plansError || statsError
