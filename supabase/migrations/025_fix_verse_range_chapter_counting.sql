@@ -270,9 +270,18 @@ BEGIN
   END IF;
 
   -- 2. Cross-chapter verse range ("Exodus 11:1-12:21")
+  --    Note: startVerse (group 3) is captured by the regex but intentionally unused.
+  --    The first chapter always counts because the passage continues past it into the
+  --    next chapter, meaning it necessarily covers through the first chapter's last verse
+  --    regardless of where it starts (e.g. "Isaiah 9:8-10:4" — ch 9 is fully traversed).
   parts := regexp_match(trimmed, '^(.+?)\s+(\d+):(\d+)\s*-\s*(\d+):(\d+)$');
   IF parts IS NOT NULL THEN
-    book := parts[1];
+    -- Normalize book name aliases (e.g. "Psalm" → "Psalms")
+    book := CASE parts[1]
+      WHEN 'Psalm' THEN 'Psalms'
+      WHEN 'Song of Songs' THEN 'Song of Solomon'
+      ELSE parts[1]
+    END;
     start_ch := parts[2]::INTEGER;
     end_ch := parts[4]::INTEGER;
     end_verse := parts[5]::INTEGER;
@@ -308,7 +317,12 @@ BEGIN
   -- 3. Same-chapter verse range ("Luke 1:1-38")
   parts := regexp_match(trimmed, '^(.+?)\s+(\d+):(\d+)\s*-\s*(\d+)$');
   IF parts IS NOT NULL THEN
-    book := parts[1];
+    -- Normalize book name aliases
+    book := CASE parts[1]
+      WHEN 'Psalm' THEN 'Psalms'
+      WHEN 'Song of Songs' THEN 'Song of Solomon'
+      ELSE parts[1]
+    END;
     start_ch := parts[2]::INTEGER;
     end_verse := parts[4]::INTEGER;
 

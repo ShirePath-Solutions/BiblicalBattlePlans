@@ -55,10 +55,22 @@ export async function callSyncReadingStats(
   return data as Partial<UserStats> | null
 }
 
+// Normalize book name aliases to match BIBLE_VERSE_COUNTS keys
+const BOOK_ALIASES: Record<string, string> = {
+  'Psalm': 'Psalms',
+  'Song of Songs': 'Song of Solomon',
+}
+
 // Look up the total verses in a chapter, returns undefined if book/chapter unknown
 function getVerseCount(book: string, chapter: number): number | undefined {
-  const counts = BIBLE_VERSE_COUNTS[book]
-  if (!counts) return undefined
+  const normalized = BOOK_ALIASES[book] ?? book
+  const counts = BIBLE_VERSE_COUNTS[normalized]
+  if (!counts) {
+    if (import.meta.env.DEV) {
+      console.warn(`[countChaptersInPassage] Unknown book: "${book}"`)
+    }
+    return undefined
+  }
   return counts[chapter - 1] // array is 0-indexed, chapters are 1-indexed
 }
 
@@ -81,6 +93,10 @@ export function countChaptersInPassage(passage: string): number {
 
   // 2. Cross-chapter verse range ("Exodus 11:1-12:21")
   //    Book StartCh:StartV - EndCh:EndV
+  //    Note: startVerse (group 3) is captured by the regex but intentionally unused.
+  //    The first chapter always counts because the passage continues past it into the
+  //    next chapter, meaning it necessarily covers through the first chapter's last verse
+  //    regardless of where it starts (e.g. "Isaiah 9:8-10:4" — ch 9 is fully traversed).
   const crossChapterMatch = trimmed.match(/^(.+?)\s+(\d+):(\d+)\s*-\s*(\d+):(\d+)$/)
   if (crossChapterMatch) {
     const book = crossChapterMatch[1]
