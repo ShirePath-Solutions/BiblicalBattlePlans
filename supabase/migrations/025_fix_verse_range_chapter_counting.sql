@@ -297,7 +297,10 @@ BEGIN
       RETURN 0;
     END IF;
 
-    -- First chapter: passage continues past it, so it's covered through its last verse
+    -- First chapter: passage continues past it, so it's covered through its last verse.
+    -- This assumes reading plans split passages at chapter boundaries (e.g. M'Cheyne's
+    -- "Isaiah 8:1-9:7" is followed by "Isaiah 9:8-10:4"), so the first chapter is
+    -- always fully read across adjacent readings.
     chapter_count := 1;
 
     -- Middle chapters (fully traversed)
@@ -358,7 +361,153 @@ COMMENT ON FUNCTION count_chapters_in_passage(TEXT) IS
   'Parses passage strings and counts completed chapters. A chapter counts only if the passage covers through its last verse. Uses bible_verse_counts table for lookup.';
 
 -- ============================================
--- PHASE 3: Recalculate all users' stats
+-- PHASE 3: Fix zero-chapter fallback in calculate_chapters_for_progress
+-- Previously, total_chapters = 0 was treated as "couldn't parse" and fell back to
+-- sections_count. Now that verse-range passages legitimately return 0, we track
+-- whether any passages were actually found and only fall back on true parse failures.
+-- ============================================
+
+CREATE OR REPLACE FUNCTION calculate_chapters_for_progress(
+  p_completed_sections TEXT[],
+  p_user_plan_id UUID
+)
+RETURNS INTEGER AS $$
+DECLARE
+  sections_count INTEGER;
+  plan_type TEXT;
+  chapters_per_day INTEGER;
+  plan_structure JSONB;
+  plan_duration INTEGER;
+  plan_total_chapters INTEGER;
+  total_chapters INTEGER := 0;
+  passages_parsed INTEGER := 0;
+  section_id TEXT;
+  week_num INTEGER;
+  day_num INTEGER;
+  week_data JSONB;
+  reading JSONB;
+  passage TEXT;
+  section_parts TEXT[];
+BEGIN
+  sections_count := COALESCE(array_length(p_completed_sections, 1), 0);
+
+  IF sections_count = 0 THEN
+    RETURN 0;
+  END IF;
+
+  -- Get plan type, chapters_per_day, duration_days, and full structure
+  SELECT
+    rp.daily_structure->>'type',
+    COALESCE((rp.daily_structure->>'chapters_per_day')::INTEGER, 3),
+    rp.daily_structure,
+    rp.duration_days,
+    COALESCE((rp.daily_structure->>'total_chapters')::INTEGER, 0)
+  INTO plan_type, chapters_per_day, plan_structure, plan_duration, plan_total_chapters
+  FROM user_plans up
+  JOIN reading_plans rp ON up.plan_id = rp.id
+  WHERE up.id = p_user_plan_id;
+
+  -- For sequential plans, use even distribution if duration_days is available
+  IF plan_type = 'sequential' THEN
+    IF plan_duration IS NOT NULL AND plan_duration > 0 AND plan_total_chapters > 0 THEN
+      FOREACH section_id IN ARRAY p_completed_sections
+      LOOP
+        section_parts := regexp_match(section_id, 'day-(\d+)');
+        IF section_parts IS NOT NULL THEN
+          day_num := section_parts[1]::INTEGER;
+          total_chapters := total_chapters +
+            (floor(day_num::NUMERIC * plan_total_chapters / plan_duration) -
+             floor((day_num - 1)::NUMERIC * plan_total_chapters / plan_duration))::INTEGER;
+        ELSE
+          total_chapters := total_chapters + chapters_per_day;
+        END IF;
+      END LOOP;
+      RETURN total_chapters;
+    ELSE
+      RETURN sections_count * chapters_per_day;
+    END IF;
+  END IF;
+
+  -- For weekly_sectional plans, parse the section IDs and look up passages
+  IF plan_type = 'weekly_sectional' THEN
+    FOREACH section_id IN ARRAY p_completed_sections
+    LOOP
+      section_parts := regexp_match(section_id, 'week(\d+)-day(\d+)');
+      IF section_parts IS NOT NULL THEN
+        week_num := section_parts[1]::INTEGER;
+        day_num := section_parts[2]::INTEGER;
+
+        week_data := plan_structure->'weeks'->(week_num - 1);
+        IF week_data IS NOT NULL THEN
+          FOR reading IN SELECT * FROM jsonb_array_elements(week_data->'readings')
+          LOOP
+            IF (reading->>'dayOfWeek')::INTEGER = day_num THEN
+              passage := reading->>'passage';
+              IF passage IS NOT NULL THEN
+                total_chapters := total_chapters + count_chapters_in_passage(passage);
+              ELSE
+                total_chapters := total_chapters + 1;
+              END IF;
+              EXIT;
+            END IF;
+          END LOOP;
+        ELSE
+          total_chapters := total_chapters + 1;
+        END IF;
+      ELSE
+        total_chapters := total_chapters + 1;
+      END IF;
+    END LOOP;
+
+    RETURN total_chapters;
+  END IF;
+
+  -- For sectional plans (like M'Cheyne), parse section IDs and look up passages
+  IF plan_type = 'sectional' THEN
+    FOREACH section_id IN ARRAY p_completed_sections
+    LOOP
+      section_parts := regexp_match(section_id, 'day(\d+)-(.+)');
+      IF section_parts IS NOT NULL THEN
+        day_num := section_parts[1]::INTEGER;
+
+        FOR reading IN SELECT * FROM jsonb_array_elements(plan_structure->'readings')
+        LOOP
+          IF (reading->>'day')::INTEGER = day_num THEN
+            FOR week_data IN SELECT * FROM jsonb_array_elements(reading->'sections')
+            LOOP
+              IF week_data->>'id' = section_parts[2] THEN
+                FOR passage IN SELECT * FROM jsonb_array_elements_text(week_data->'passages')
+                LOOP
+                  total_chapters := total_chapters + count_chapters_in_passage(passage);
+                  passages_parsed := passages_parsed + 1;
+                END LOOP;
+                EXIT;
+              END IF;
+            END LOOP;
+            EXIT;
+          END IF;
+        END LOOP;
+      ELSE
+        total_chapters := total_chapters + 1;
+      END IF;
+    END LOOP;
+
+    -- Only fall back to sections_count if we couldn't find any passages to parse.
+    -- A legitimate 0 (all partial verse-range sections) should stay 0.
+    IF passages_parsed = 0 AND total_chapters = 0 THEN
+      RETURN sections_count;
+    END IF;
+
+    RETURN total_chapters;
+  END IF;
+
+  -- For cycling_lists and other types, each section is one chapter
+  RETURN sections_count;
+END;
+$$ LANGUAGE plpgsql STABLE;
+
+-- ============================================
+-- PHASE 4: Recalculate all users' stats
 -- Disable guild streak milestone trigger to prevent bogus activity entries
 -- ============================================
 

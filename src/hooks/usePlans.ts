@@ -112,7 +112,10 @@ export function countChaptersInPassage(passage: string): number {
       return (total !== undefined && endVerse >= total) ? 1 : 0
     }
 
-    // First chapter: passage continues past it, so it's covered through its last verse
+    // First chapter: passage continues past it, so it's covered through its last verse.
+    // This assumes reading plans split passages at chapter boundaries (e.g. M'Cheyne's
+    // "Isaiah 8:1-9:7" is followed by "Isaiah 9:8-10:4"), so the first chapter is
+    // always fully read across adjacent readings.
     count += 1
 
     // Middle chapters (fully traversed by definition)
@@ -482,6 +485,7 @@ export function useTodaysTotalChapters() {
         if (planType === 'sectional') {
           const structure = dailyStructure as import('../types').SectionalStructure
           let dayChapters = 0
+          let passagesParsed = 0
 
           for (const sectionStr of completedSections) {
             // Extract day number from section ID (e.g., "day3-family1" -> 3)
@@ -498,11 +502,14 @@ export function useTodaysTotalChapters() {
             if (section) {
               for (const passage of section.passages) {
                 dayChapters += countChaptersInPassage(passage)
+                passagesParsed++
               }
             }
           }
 
-          totalChapters += dayChapters > 0 ? dayChapters : completedSections.length
+          // Only fall back to sections_count if we couldn't find any passages to parse.
+          // A legitimate 0 (all partial verse-range sections) should stay 0.
+          totalChapters += passagesParsed > 0 ? dayChapters : completedSections.length
           continue
         }
 
