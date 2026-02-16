@@ -249,7 +249,7 @@ RETURNS INTEGER AS $$
 DECLARE
   trimmed TEXT;
   parts TEXT[];
-  book TEXT;
+  v_book TEXT;
   start_ch INTEGER;
   end_ch INTEGER;
   end_verse INTEGER;
@@ -277,7 +277,7 @@ BEGIN
   parts := regexp_match(trimmed, '^(.+?)\s+(\d+):(\d+)\s*-\s*(\d+):(\d+)$');
   IF parts IS NOT NULL THEN
     -- Normalize book name aliases (e.g. "Psalm" → "Psalms")
-    book := CASE parts[1]
+    v_book := CASE parts[1]
       WHEN 'Psalm' THEN 'Psalms'
       WHEN 'Song of Songs' THEN 'Song of Solomon'
       ELSE parts[1]
@@ -289,7 +289,7 @@ BEGIN
     IF start_ch = end_ch THEN
       -- Same chapter edge case
       SELECT verse_count INTO total_verses
-      FROM bible_verse_counts WHERE bible_verse_counts.book = count_chapters_in_passage.book
+      FROM bible_verse_counts WHERE bible_verse_counts.book = v_book
         AND bible_verse_counts.chapter = start_ch;
       IF total_verses IS NOT NULL AND end_verse >= total_verses THEN
         RETURN 1;
@@ -308,7 +308,7 @@ BEGIN
 
     -- Last chapter: complete only if end_verse >= total verses
     SELECT verse_count INTO total_verses
-    FROM bible_verse_counts WHERE bible_verse_counts.book = count_chapters_in_passage.book
+    FROM bible_verse_counts WHERE bible_verse_counts.book = v_book
       AND bible_verse_counts.chapter = end_ch;
     IF total_verses IS NOT NULL AND end_verse >= total_verses THEN
       chapter_count := chapter_count + 1;
@@ -321,7 +321,7 @@ BEGIN
   parts := regexp_match(trimmed, '^(.+?)\s+(\d+):(\d+)\s*-\s*(\d+)$');
   IF parts IS NOT NULL THEN
     -- Normalize book name aliases
-    book := CASE parts[1]
+    v_book := CASE parts[1]
       WHEN 'Psalm' THEN 'Psalms'
       WHEN 'Song of Songs' THEN 'Song of Solomon'
       ELSE parts[1]
@@ -330,7 +330,7 @@ BEGIN
     end_verse := parts[4]::INTEGER;
 
     SELECT verse_count INTO total_verses
-    FROM bible_verse_counts WHERE bible_verse_counts.book = count_chapters_in_passage.book
+    FROM bible_verse_counts WHERE bible_verse_counts.book = v_book
       AND bible_verse_counts.chapter = start_ch;
     IF total_verses IS NOT NULL AND end_verse >= total_verses THEN
       RETURN 1;
