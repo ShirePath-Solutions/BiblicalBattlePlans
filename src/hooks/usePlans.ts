@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { getSupabase, safeQuery } from '../lib/supabase'
 import { useAuth } from './useAuth'
+import { BIBLE_VERSE_COUNTS } from '../lib/bibleVerseCounts'
 import type { ReadingPlan, UserPlan, DailyProgress, DailyStructure, CyclingListsStructure, ListPositions, WeeklySectionalStructure, UserStats } from '../types'
 
 // Helper type for today's reading result
@@ -54,24 +55,109 @@ export async function callSyncReadingStats(
   return data as Partial<UserStats> | null
 }
 
-// Parse a passage string and count the chapters
-// Examples: "Genesis 1" → 1, "Genesis 1-3" → 3, "Romans 7-8" → 2, "Psalm 119" → 1
+// Normalize book name aliases to match BIBLE_VERSE_COUNTS keys
+const BOOK_ALIASES: Record<string, string> = {
+  'Psalm': 'Psalms',
+  'Song of Songs': 'Song of Solomon',
+}
+
+// Look up the total verses in a chapter, returns undefined if book/chapter unknown
+function getVerseCount(book: string, chapter: number): number | undefined {
+  const normalized = BOOK_ALIASES[book] ?? book
+  const counts = BIBLE_VERSE_COUNTS[normalized]
+  if (!counts) {
+    if (import.meta.env.DEV) {
+      console.warn(`[countChaptersInPassage] Unknown book: "${book}"`)
+    }
+    return undefined
+  }
+  return counts[chapter - 1] // array is 0-indexed, chapters are 1-indexed
+}
+
+// Parse a passage string and count the completed chapters.
+// A chapter counts only if the passage covers through its last verse.
+// Examples:
+//   "Genesis 1-3" → 3 (chapter range, all complete)
+//   "Luke 1:1-38" → 0 (partial chapter, Luke 1 has 80 verses)
+//   "Luke 1:39-80" → 1 (finishes Luke 1)
+//   "Exodus 11:1-12:21" → 1 (ch 11 fully traversed; ch 12 has 51 verses, not finished)
+//   "Jeremiah 36, 45" → 2 (comma-separated, each is a full chapter)
+//   "Psalms 119:1-24" → 0 ... "Psalms 119:145-176" → 1
 export function countChaptersInPassage(passage: string): number {
-  // Match patterns like "Book N-M" or "Book N"
-  const rangeMatch = passage.match(/(\d+)\s*-\s*(\d+)/)
+  const trimmed = passage.trim()
+
+  // 1. Comma-separated passages ("Jeremiah 36, 45") → split and recurse
+  if (trimmed.includes(',')) {
+    return trimmed.split(',').reduce((sum, part) => sum + countChaptersInPassage(part), 0)
+  }
+
+  // 2. Cross-chapter verse range ("Exodus 11:1-12:21")
+  //    Book StartCh:StartV - EndCh:EndV
+  //    Note: startVerse (group 3) is captured by the regex but intentionally unused.
+  //    The first chapter always counts because the passage continues past it into the
+  //    next chapter, meaning it necessarily covers through the first chapter's last verse
+  //    regardless of where it starts (e.g. "Isaiah 9:8-10:4" — ch 9 is fully traversed).
+  const crossChapterMatch = trimmed.match(/^(.+?)\s+(\d+):(\d+)\s*-\s*(\d+):(\d+)$/)
+  if (crossChapterMatch) {
+    const book = crossChapterMatch[1]
+    const startCh = parseInt(crossChapterMatch[2], 10)
+    const endCh = parseInt(crossChapterMatch[4], 10)
+    const endVerse = parseInt(crossChapterMatch[5], 10)
+
+    let count = 0
+
+    if (startCh === endCh) {
+      // Same chapter edge case — treat like same-chapter verse range
+      const total = getVerseCount(book, startCh)
+      return (total !== undefined && endVerse >= total) ? 1 : 0
+    }
+
+    // First chapter: passage continues past it, so it's covered through its last verse.
+    // This assumes reading plans split passages at chapter boundaries (e.g. M'Cheyne's
+    // "Isaiah 8:1-9:7" is followed by "Isaiah 9:8-10:4"), so the first chapter is
+    // always fully read across adjacent readings.
+    count += 1
+
+    // Middle chapters (fully traversed by definition)
+    count += Math.max(0, endCh - startCh - 1)
+
+    // Last chapter: complete only if endVerse >= total verses
+    const lastTotal = getVerseCount(book, endCh)
+    if (lastTotal !== undefined && endVerse >= lastTotal) {
+      count += 1
+    }
+
+    return count
+  }
+
+  // 3. Same-chapter verse range ("Luke 1:1-38")
+  //    Book Ch:StartV-EndV
+  const sameChapterMatch = trimmed.match(/^(.+?)\s+(\d+):(\d+)\s*-\s*(\d+)$/)
+  if (sameChapterMatch) {
+    const book = sameChapterMatch[1]
+    const chapter = parseInt(sameChapterMatch[2], 10)
+    const endVerse = parseInt(sameChapterMatch[4], 10)
+
+    const total = getVerseCount(book, chapter)
+    // Count 1 if the passage covers through the chapter's last verse
+    return (total !== undefined && endVerse >= total) ? 1 : 0
+  }
+
+  // 4. Chapter range ("Genesis 1-3") — no colons present
+  const rangeMatch = trimmed.match(/(\d+)\s*-\s*(\d+)/)
   if (rangeMatch) {
     const start = parseInt(rangeMatch[1], 10)
     const end = parseInt(rangeMatch[2], 10)
     return Math.max(1, end - start + 1)
   }
 
-  // Single chapter
-  const singleMatch = passage.match(/\d+/)
+  // 5. Single chapter ("Genesis 1")
+  const singleMatch = trimmed.match(/\d+/)
   if (singleMatch) {
     return 1
   }
 
-  // Fallback - assume 1 chapter
+  // 6. No number — single-chapter book ("Jude")
   return 1
 }
 
@@ -399,6 +485,7 @@ export function useTodaysTotalChapters() {
         if (planType === 'sectional') {
           const structure = dailyStructure as import('../types').SectionalStructure
           let dayChapters = 0
+          let passagesParsed = 0
 
           for (const sectionStr of completedSections) {
             // Extract day number from section ID (e.g., "day3-family1" -> 3)
@@ -415,11 +502,14 @@ export function useTodaysTotalChapters() {
             if (section) {
               for (const passage of section.passages) {
                 dayChapters += countChaptersInPassage(passage)
+                passagesParsed++
               }
             }
           }
 
-          totalChapters += dayChapters > 0 ? dayChapters : completedSections.length
+          // Only fall back to sections_count if we couldn't find any passages to parse.
+          // A legitimate 0 (all partial verse-range sections) should stay 0.
+          totalChapters += passagesParsed > 0 ? dayChapters : completedSections.length
           continue
         }
 
