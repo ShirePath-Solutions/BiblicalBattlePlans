@@ -34,7 +34,7 @@ export function MaintenanceBanner() {
         <div className="flex items-center justify-center gap-3">
           <Shield className="w-4 h-4 text-warning shrink-0" />
           <p className="font-pixel text-[0.625rem] text-ink text-center">
-            The realm undergoes maintenance tomorrow (March 3) around 4:30 AM Central. Expect ~1 hour of downtime. Your progress is safe.
+            Maintenance tomorrow (Mar 3) ~4:30 AM CT. Expect ~1 hr downtime. Progress is safe.
           </p>
         </div>
       </div>

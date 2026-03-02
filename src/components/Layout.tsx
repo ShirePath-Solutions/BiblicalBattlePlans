@@ -55,6 +55,9 @@ export function Layout() {
 
   return (
     <div className="min-h-screen bg-parchment-dark flex flex-col">
+      {/* Spacer for fixed maintenance banner */}
+      {MAINTENANCE_MODE !== 'off' && <div className="h-[52px]" />}
+
       {/* Update Banner */}
       {needRefresh && (
         <UpdateBanner
