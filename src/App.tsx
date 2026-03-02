@@ -9,6 +9,9 @@ import { Layout } from './components/Layout'
 import { Landing, Login, Signup, ForgotPassword, ResetPassword, About } from './pages'
 import { LoadingOverlay, LoadingSpinner } from './components/ui'
 import { OutageBanner } from './components/OutageBanner'
+import { MaintenanceBanner } from './components/MaintenanceBanner'
+import { MaintenanceOverlay } from './components/MaintenanceOverlay'
+import { MAINTENANCE_MODE } from './lib/maintenance'
 import { RouteErrorBoundary } from './components/ErrorBoundary'
 import { queryClient } from './lib/queryClient'
 
@@ -110,6 +113,7 @@ function App() {
   if (!isInitialized) {
     return (
       <>
+        <MaintenanceBanner />
         <OutageBanner />
         <LoadingOverlay message="INITIALIZING..." />
       </>
@@ -121,6 +125,7 @@ function App() {
       <ScrollToTop />
       <SpeedInsights />
       <Analytics />
+      <MaintenanceBanner />
       <OutageBanner />
       <Toaster
         position="bottom-center"
@@ -153,9 +158,13 @@ function App() {
         {/* Protected routes */}
         <Route
           element={
-            <ProtectedRoute>
-              <Layout />
-            </ProtectedRoute>
+            MAINTENANCE_MODE === 'active' ? (
+              <MaintenanceOverlay />
+            ) : (
+              <ProtectedRoute>
+                <Layout />
+              </ProtectedRoute>
+            )
           }
         >
           <Route path="/dashboard" element={<LazyRoute><Dashboard /></LazyRoute>} />

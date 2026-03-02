@@ -1,10 +1,14 @@
 import { Link } from 'react-router-dom'
 import { BookOpen, Users, Trophy, Swords, Flame, Map } from 'lucide-react'
 import { Button, Card, CardContent } from '../components/ui'
+import { MAINTENANCE_MODE } from '../lib/maintenance'
 
 export function Landing() {
   return (
     <div className="min-h-screen bg-parchment-dark">
+      {/* Spacer for fixed maintenance banner */}
+      {MAINTENANCE_MODE !== 'off' && <div className="h-[52px]" />}
+
       {/* Hero Section */}
       <header className="relative overflow-hidden">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16">

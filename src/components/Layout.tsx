@@ -14,6 +14,7 @@ import { MilestoneWatcher } from './MilestoneWatcher'
 import { WelcomeModal } from './WelcomeModal'
 import { UpdateBanner } from './UpdateBanner'
 import { useIsOutage } from '../hooks/useSupabaseStatus'
+import { MAINTENANCE_MODE } from '../lib/maintenance'
 
 const WELCOME_MODAL_KEY = 'hasSeenWelcomeModal'
 
@@ -59,12 +60,15 @@ export function Layout() {
         <UpdateBanner
           onUpdate={updateServiceWorker}
           onDismiss={dismissUpdate}
-          topOffset={isOutage ? 52 : 0}
+          topOffset={(MAINTENANCE_MODE !== 'off' ? 52 : 0) + (isOutage ? 52 : 0)}
         />
       )}
 
       {/* Header */}
-      <header className={`sticky ${isOutage && needRefresh ? 'top-[104px]' : isOutage || needRefresh ? 'top-[52px]' : 'top-0'} z-40 bg-gradient-to-br from-parchment to-parchment-light border-b-2 border-border-subtle shadow-[0_4px_12px_var(--shadow-color)] transition-[top] duration-200`}>
+      <header
+        style={{ top: ((MAINTENANCE_MODE !== 'off' ? 52 : 0) + (isOutage ? 52 : 0) + (needRefresh ? 52 : 0)) || undefined }}
+        className="sticky top-0 z-40 bg-gradient-to-br from-parchment to-parchment-light border-b-2 border-border-subtle shadow-[0_4px_12px_var(--shadow-color)] transition-[top] duration-200"
+      >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             {/* Logo */}
