@@ -28,7 +28,7 @@ export function MaintenanceBanner() {
     <div
       role="status"
       aria-live="polite"
-      className="fixed top-0 left-0 right-0 z-[52] bg-warning/20 border-b-2 border-warning shadow-sm"
+      className="fixed top-0 left-0 right-0 z-[52] bg-parchment border-b-2 border-warning shadow-sm"
     >
       <div className="max-w-7xl mx-auto px-4 py-3">
         <div className="flex items-center justify-center gap-3">
