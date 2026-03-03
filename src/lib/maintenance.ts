@@ -1,1 +1,1 @@
-export const MAINTENANCE_MODE: "off" | "scheduled" | "active" = "scheduled"
+export const MAINTENANCE_MODE: "off" | "scheduled" | "active" = "active"
