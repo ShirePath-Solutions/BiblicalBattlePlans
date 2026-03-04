@@ -1,188 +1,56 @@
-import { lazy, Suspense, useEffect, useLayoutEffect, useRef, type ReactNode } from 'react'
-import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
-import { SpeedInsights } from '@vercel/speed-insights/react'
-import { Analytics } from '@vercel/analytics/react'
-import { Toaster } from 'sonner'
-import { useAuth } from './hooks/useAuth'
-import { ProtectedRoute } from './components/auth'
-import { Layout } from './components/Layout'
-import { Landing, Login, Signup, ForgotPassword, ResetPassword, About } from './pages'
-import { LoadingOverlay, LoadingSpinner } from './components/ui'
-import { OutageBanner } from './components/OutageBanner'
-import { MaintenanceBanner } from './components/MaintenanceBanner'
-import { MaintenanceOverlay } from './components/MaintenanceOverlay'
-import { MAINTENANCE_MODE } from './lib/maintenance'
-import { RouteErrorBoundary } from './components/ErrorBoundary'
-import { queryClient } from './lib/queryClient'
-
-// Lazy-loaded protected routes (code-split into separate chunks)
-const Dashboard = lazy(() => import('./pages/Dashboard').then(m => ({ default: m.Dashboard })))
-const Plans = lazy(() => import('./pages/Plans').then(m => ({ default: m.Plans })))
-const PlanDetail = lazy(() => import('./pages/PlanDetail').then(m => ({ default: m.PlanDetail })))
-const ActivePlan = lazy(() => import('./pages/ActivePlan').then(m => ({ default: m.ActivePlan })))
-const Profile = lazy(() => import('./pages/Profile').then(m => ({ default: m.Profile })))
-const Acknowledgements = lazy(() => import('./pages/Acknowledgements').then(m => ({ default: m.Acknowledgements })))
-const Feedback = lazy(() => import('./pages/Feedback').then(m => ({ default: m.Feedback })))
-const GuildHub = lazy(() => import('./pages/GuildHub').then(m => ({ default: m.GuildHub })))
-const Guild = lazy(() => import('./pages/Guild').then(m => ({ default: m.Guild })))
-const GuildJoin = lazy(() => import('./pages/GuildJoin').then(m => ({ default: m.GuildJoin })))
-
-const lazyFallback = (
-  <div className="flex justify-center pt-16">
-    <LoadingSpinner size="lg" />
-  </div>
-)
-
-function LazyRoute({ children }: { children: ReactNode }) {
-  return (
-    <RouteErrorBoundary>
-      <Suspense fallback={lazyFallback}>
-        {children}
-      </Suspense>
-    </RouteErrorBoundary>
-  )
-}
-
-/**
- * Handle tab visibility changes by invalidating stale queries.
- *
- * When a tab returns from background after 5+ seconds, we invalidate the
- * React Query cache to trigger refetches of potentially stale data.
- *
- * Token refresh is handled on-demand by safeQuery() - when a query fails
- * due to an expired token, it calls refreshSession() and retries.
- *
- * See: https://github.com/supabase/supabase-js/issues/1594
- */
-function useTabRecoveryHandler() {
-  const hiddenAtRef = useRef<number | null>(null)
-
-  useEffect(() => {
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'hidden') {
-        hiddenAtRef.current = Date.now()
-      } else if (document.visibilityState === 'visible' && hiddenAtRef.current) {
-        const hiddenDuration = Date.now() - hiddenAtRef.current
-        hiddenAtRef.current = null
-
-        // If hidden for more than 5 seconds, invalidate queries to refresh stale data
-        if (hiddenDuration > 5000) {
-          queryClient.invalidateQueries()
-        }
-      }
-    }
-
-    document.addEventListener('visibilitychange', handleVisibilityChange)
-    return () => document.removeEventListener('visibilitychange', handleVisibilityChange)
-  }, [])
-}
-
-// Scroll to top on route change
-function ScrollToTop() {
-  const { pathname } = useLocation()
-
-  // Set scroll restoration to manual immediately on mount
-  useLayoutEffect(() => {
-    if ('scrollRestoration' in window.history) {
-      window.history.scrollRestoration = 'manual'
-    }
-  }, [])
-
-  // Scroll to top synchronously on route change using useLayoutEffect
-  useLayoutEffect(() => {
-    // Use multiple methods to ensure scroll works across all browsers
-    window.scrollTo(0, 0)
-    document.documentElement.scrollTop = 0
-    document.body.scrollTop = 0 // For Safari
-  }, [pathname])
-
-  return null
-}
-
 function App() {
-  const { initialize, isInitialized, user } = useAuth()
-
-  // Handle tab visibility changes with tiered recovery strategy
-  useTabRecoveryHandler()
-
-  useEffect(() => {
-    initialize()
-  }, [initialize])
-
-  // Show loading only while initializing auth (not during sign in/out operations)
-  if (!isInitialized) {
-    return (
-      <>
-        <MaintenanceBanner />
-        <OutageBanner />
-        <LoadingOverlay message="INITIALIZING..." />
-      </>
-    )
-  }
-
   return (
-    <BrowserRouter>
-      <ScrollToTop />
-      <SpeedInsights />
-      <Analytics />
-      <MaintenanceBanner />
-      <OutageBanner />
-      <Toaster
-        position="bottom-center"
-        toastOptions={{
-          className: 'font-pixel text-[0.625rem]',
-          style: {
-            background: 'var(--color-parchment)',
-            border: '2px solid var(--color-border)',
-            color: 'var(--color-ink)',
-            fontFamily: 'var(--font-pixel)',
-          },
-        }}
-      />
-      <Routes>
-        {/* Public landing page - redirect to dashboard if authenticated */}
-        <Route
-          path="/"
-          element={user ? <Navigate to="/dashboard" replace /> : <Landing />}
-        />
+    <div className="min-h-screen bg-parchment-dark flex items-center justify-center p-6">
+      <div className="bg-parchment border-2 border-border rounded-lg shadow-lg max-w-md w-full p-8 text-center">
+        <h1 className="font-pixel text-lg text-ink mb-6">
+          APP DEPRECATED
+        </h1>
 
-        {/* Public auth routes */}
-        <Route path="/login" element={<Login />} />
-        <Route path="/signup" element={<Signup />} />
-        <Route path="/forgot-password" element={<ForgotPassword />} />
-        <Route path="/reset-password" element={<ResetPassword />} />
+        <div className="font-pixel text-[0.625rem] text-ink-muted space-y-4 leading-relaxed">
+          <p>
+            This version of Biblical Battle Plans has been retired.
+          </p>
 
-        {/* Public info page */}
-        <Route path="/about" element={<About />} />
+          <p>
+            Please visit us on the web at:
+          </p>
 
-        {/* Protected routes */}
-        <Route
-          element={
-            MAINTENANCE_MODE === 'active' ? (
-              <MaintenanceOverlay />
-            ) : (
-              <ProtectedRoute>
-                <Layout />
-              </ProtectedRoute>
-            )
-          }
-        >
-          <Route path="/dashboard" element={<LazyRoute><Dashboard /></LazyRoute>} />
-          <Route path="/plans" element={<LazyRoute><Plans /></LazyRoute>} />
-          <Route path="/plans/:id" element={<LazyRoute><PlanDetail /></LazyRoute>} />
-          <Route path="/campaign/:id" element={<LazyRoute><ActivePlan /></LazyRoute>} />
-          <Route path="/guild" element={<LazyRoute><GuildHub /></LazyRoute>} />
-          <Route path="/guild/:id" element={<LazyRoute><Guild /></LazyRoute>} />
-          <Route path="/guild/join/:code" element={<LazyRoute><GuildJoin /></LazyRoute>} />
-          <Route path="/profile" element={<LazyRoute><Profile /></LazyRoute>} />
-          <Route path="/acknowledgements" element={<LazyRoute><Acknowledgements /></LazyRoute>} />
-          <Route path="/feedback" element={<LazyRoute><Feedback /></LazyRoute>} />
-        </Route>
+          <a
+            href="https://biblicalbattleplans.com"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="block font-pixel text-[0.625rem] text-accent-green underline hover:text-accent-green/80 break-all"
+          >
+            BiblicalBattlePlans.com
+          </a>
 
-        {/* Catch all - redirect appropriately */}
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
-    </BrowserRouter>
+          <hr className="border-border my-4" />
+
+          <div className="text-left space-y-3">
+            <p className="font-pixel text-[0.5625rem] text-ink font-bold">
+              TO REMOVE THIS APP:
+            </p>
+            <ul className="font-pixel text-[0.5rem] text-ink-muted space-y-2 list-none">
+              <li>
+                <span className="text-ink">iOS:</span> Long-press the app icon &gt; Remove App &gt; Delete App
+              </li>
+              <li>
+                <span className="text-ink">Android:</span> Long-press the app icon &gt; Uninstall
+              </li>
+              <li>
+                <span className="text-ink">Desktop:</span> Open Chrome menu &gt; More Tools &gt; Clear browsing data, or remove from chrome://apps
+              </li>
+            </ul>
+          </div>
+
+          <hr className="border-border my-4" />
+
+          <p className="text-[0.5rem]">
+            Thank you for being an early adventurer. Your progress has been saved and will be available at BiblicalBattlePlans.com.
+          </p>
+        </div>
+      </div>
+    </div>
   )
 }
 
